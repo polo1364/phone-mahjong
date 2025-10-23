@@ -2383,8 +2383,8 @@ function calcFan(winner, winTile, selfDraw) {
   }
   
   const nz = Object.values(suitCnt).filter(x => x > 0).length;
-  if (nz === 1) fan += RULES.scoring.PureOneSuit;
-  else if (nz === 2 && honors > 0) fan += RULES.scoring.HalfFlush;
+  if (nz === 1 && honors === 0) fan += RULES.scoring.PureOneSuit;
+  else if (nz === 1 && honors > 0) fan += RULES.scoring.HalfFlush;
   
   // 花牌台數已移除
   
@@ -2453,10 +2453,10 @@ function calcFanDetails(winner, winTile, selfDraw) {
     else if (k === 'F' || k === 'D') honors++;
   }
   const nz = Object.values(suitCnt).filter(x => x > 0).length;
-  if (nz === 1) {
+  if (nz === 1 && honors === 0) {
     fan += RULES.scoring.PureOneSuit;
     categories.push('清一色');
-  } else if (nz === 2 && honors > 0) {
+  } else if (nz === 1 && honors > 0) {
     fan += RULES.scoring.HalfFlush;
     categories.push('混一色');
   }
