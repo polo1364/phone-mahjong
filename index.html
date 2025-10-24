@@ -708,18 +708,59 @@ const rng = (n) => Math.floor(Math.random() * n);
 const clone = (o) => JSON.parse(JSON.stringify(o));
 
 // 音效系統
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let audioCtx = null;
+let soundEnabled = true;
+let audioInitialized = false;
+
+// 初始化 AudioContext（需要使用者互動）
+function initAudio() {
+  if (!audioInitialized) {
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      // 確保 AudioContext 已啟動
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      audioInitialized = true;
+      console.log('音效系統已初始化');
+    } catch (e) {
+      console.error('音效系統初始化失敗:', e);
+      soundEnabled = false;
+    }
+  }
+}
+
 function playSound(freq, duration, type = 'sine') {
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-  osc.frequency.value = freq;
-  osc.type = type;
-  gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
-  osc.start(audioCtx.currentTime);
-  osc.stop(audioCtx.currentTime + duration);
+  // 檢查音效是否啟用
+  if (!soundEnabled) return;
+  
+  // 確保 AudioContext 已初始化
+  if (!audioInitialized) {
+    initAudio();
+  }
+  
+  // 如果 AudioContext 不可用，直接返回
+  if (!audioCtx) return;
+  
+  try {
+    // 確保 AudioContext 處於運行狀態
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.frequency.value = freq;
+    osc.type = type;
+    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+    osc.start(audioCtx.currentTime);
+    osc.stop(audioCtx.currentTime + duration);
+  } catch (e) {
+    console.error('播放音效失敗:', e);
+  }
 }
 
 // 特效系統
@@ -2733,6 +2774,9 @@ function stepAI() {
 /* ========= UI 操作 ========= */
 
 document.getElementById('btnHu').onclick = () => {
+  // 初始化音效系統
+  initAudio();
+  
   // 區分自摸和點炮
   if (S.currentReactions) {
     // 有反應選項，表示是點炮
@@ -2747,6 +2791,9 @@ document.getElementById('btnHu').onclick = () => {
 };
 
 document.getElementById('btnListen').onclick = () => {
+  // 初始化音效系統
+  initAudio();
+  
   const me = S.players[0];
   // 如果已報聽，不應該能點擊（按鈕應該是禁用的）
   if (me.declaredListen) {
@@ -2791,6 +2838,9 @@ document.getElementById('btnListen').onclick = () => {
 
 // 玩家執行暗槓（手牌四張相同）
 document.getElementById('btnKong').onclick = () => {
+  // 初始化音效系統
+  initAudio();
+  
   if (S.turn !== 0 || S.phase === 'end' || S.lastDiscard !== null) return;
   const me = S.players[0];
   // 聽牌後仍可以暗槓和加槓
@@ -2824,6 +2874,9 @@ document.getElementById('btnKong').onclick = () => {
 };
 
 document.getElementById('newGameBtn').onclick = () => {
+  // 初始化音效系統（使用者互動）
+  initAudio();
+  
   S = { players: Array.from({ length: 4 }, () => ({ points: RULES.initialPoints })) };
   // 清空戰況記錄（innerHTML），以免殘留先前訊息與標籤
   document.getElementById('log').innerHTML = '';
@@ -2833,11 +2886,23 @@ document.getElementById('newGameBtn').onclick = () => {
 };
 
 // 吃碰過按鈕事件監聽器
-document.getElementById('btnChow').onclick = handleChowClick;
-document.getElementById('btnPong').onclick = handlePongClick;
-document.getElementById('btnPass').onclick = handlePassClick;
+document.getElementById('btnChow').onclick = () => {
+  initAudio();
+  handleChowClick();
+};
+document.getElementById('btnPong').onclick = () => {
+  initAudio();
+  handlePongClick();
+};
+document.getElementById('btnPass').onclick = () => {
+  initAudio();
+  handlePassClick();
+};
 
 function onClickYourTile(idx) {
+  // 初始化音效系統
+  initAudio();
+  
   if (S.turn !== 0 || S.phase === 'end') return;
   const me = S.players[0];
   // 新增：當有反應面板時，不允許丟牌
