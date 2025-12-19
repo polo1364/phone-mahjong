@@ -1711,6 +1711,16 @@ function isWinningNow(hand, melds, winTile) {
 }
 
 function isListening(hand, melds) {
+  // 檢查手牌數量是否合理（16張麻將：手牌+副露應該在合理範圍內）
+  const kongCount = melds.filter(m => m.type === 'kong').length;
+  const totalMelds = melds.length;
+  const expectedHandSize = 16 - (totalMelds * 3) - kongCount; // 每個副露3張，每個槓額外1張
+  
+  // 如果手牌數量不在合理範圍，返回false
+  if (hand.length < expectedHandSize - 1 || hand.length > expectedHandSize + 1) {
+    return false;
+  }
+  
   const allPossibleTiles = [];
   for (let suit of [SUIT_W, SUIT_T, SUIT_B]) {
     for (let rank = 1; rank <= 9; rank++) {
@@ -1728,6 +1738,17 @@ function isListening(hand, melds) {
 
 function calcWaitingTiles(hand, melds) {
   const waits = [];
+  
+  // 檢查手牌數量是否合理
+  const kongCount = melds.filter(m => m.type === 'kong').length;
+  const totalMelds = melds.length;
+  const expectedHandSize = 16 - (totalMelds * 3) - kongCount;
+  
+  // 如果手牌數量不在合理範圍，返回空數組
+  if (hand.length < expectedHandSize - 1 || hand.length > expectedHandSize + 1) {
+    return waits;
+  }
+  
   const allPossibleTiles = [];
   for (let suit of [SUIT_W, SUIT_T, SUIT_B]) {
     for (let rank = 1; rank <= 9; rank++) {
@@ -1736,6 +1757,7 @@ function calcWaitingTiles(hand, melds) {
   }
   WINDS.forEach(name => allPossibleTiles.push({ suit: SUIT_F, name, id: -1 }));
   DRAGONS.forEach(name => allPossibleTiles.push({ suit: SUIT_D, name, id: -1 }));
+  
   const seen = new Set();
   allPossibleTiles.forEach(tile => {
     const testHand = hand.concat([tile]);
@@ -1747,6 +1769,7 @@ function calcWaitingTiles(hand, melds) {
       }
     }
   });
+  
   waits.sort((a, b) => {
     const parseKey = (k) => {
       const s = k[0];
@@ -1763,6 +1786,7 @@ function calcWaitingTiles(hand, melds) {
     const tb = parseKey(b);
     return tileSortKey(ta) - tileSortKey(tb);
   });
+  
   return waits;
 }
 
@@ -2151,7 +2175,9 @@ function canAddedKong(pid) {
   pl.melds.forEach((m, idx) => {
     if (m.type === 'pong') {
       const k = tileKey(m.tiles[0]);
-      const hasFourth = pl.hand.some(t => tileKey(t) === k);
+      // 檢查手牌中是否有第4張，包括剛摸到的牌（drawnTile）
+      const hasFourth = pl.hand.some(t => tileKey(t) === k) || 
+                       (pl.drawnTile && tileKey(pl.drawnTile) === k);
       if (hasFourth) {
         res.push({ meldIndex: idx, key: k });
       }
@@ -2214,14 +2240,27 @@ function doAddedKong(pid, meldIndex) {
   if (!meld || meld.type !== 'pong') return;
   const key = tileKey(meld.tiles[0]);
   let idx = -1;
+  let tile = null;
+  
+  // 先檢查手牌中是否有第4張
   for (let i = 0; i < pl.hand.length; i++) {
     if (tileKey(pl.hand[i]) === key) {
       idx = i;
+      tile = pl.hand[i];
       break;
     }
   }
-  if (idx < 0) return;
-  const tile = pl.hand[idx]; // 先不移除，先檢查搶槓
+  
+  // 如果手牌中沒有，檢查是否剛摸到的牌（drawnTile）
+  if (idx < 0 && pl.drawnTile && tileKey(pl.drawnTile) === key) {
+    tile = pl.drawnTile;
+    // 找到drawnTile在手牌中的位置
+    idx = pl.hand.findIndex(t => t === pl.drawnTile);
+  }
+  
+  if (idx < 0 || !tile) return;
+  
+  // 先不移除，先檢查搶槓
   
   // 檢查是否有其他人可以搶槓胡
   for (let other = 0; other < 4; other++) {
@@ -2429,6 +2468,19 @@ function discard(p, tile) {
   
   if (reactions.length > 0) {
     S.waitReact = reactions;
+    // 檢查玩家0是否能胡（榮胡）
+    const player0HuReact = reactions.find(r => r.pid === 0 && r.type === 'hu');
+    if (player0HuReact) {
+      const me = S.players[0];
+      // 如果已經報聽，自動執行榮胡
+      if (me.declaredListen) {
+        setTimeout(() => {
+          doWin(0, p, player0HuReact.tile, false);
+        }, 500); // 稍微延遲，讓玩家看到打出的牌
+        return;
+      }
+    }
+    
     if (reactions.some(r => r.pid === 0)) {
       showReactionPanel(reactions.filter(r => r.pid === 0));
     } else {
@@ -3213,12 +3265,76 @@ function stepNext() {
     
     renderAll();
     
-    // 確保有手牌才能檢查胡牌
+    // 確保有手牌才能檢查
     if (me.hand.length > 0 && me.drawnTile) {
       const t = me.drawnTile;
+      
+      // 檢查是否能胡牌
       if (isWinningNow(me.hand, me.melds, t)) {
-        document.getElementById('btnHu').disabled = false;
-        log('✨ 你可以自摸（按「胡牌」）或繼續出牌');
+        // 如果已經報聽，自動胡牌
+        if (me.declaredListen) {
+          setTimeout(() => {
+            doWin(0, -1, t, true);
+          }, 500); // 稍微延遲，讓玩家看到摸到的牌
+          return;
+        } else {
+          document.getElementById('btnHu').disabled = false;
+          log('✨ 你可以自摸（按「胡牌」）或繼續出牌');
+          return; // 如果能胡，不自動丟牌
+        }
+      }
+      
+      // 如果已經報聽，檢查是否有加槓或暗槓的機會
+      if (me.declaredListen) {
+        // 檢查加槓
+        const aks = canAddedKong(0);
+        if (aks.length > 0) {
+          // 檢查摸到的牌是否可以用來加槓
+          const drawnKey = tileKey(t);
+          const canKongWithDrawn = aks.some(ak => {
+            const meld = me.melds[ak.meldIndex];
+            return meld && meld.type === 'pong' && tileKey(meld.tiles[0]) === drawnKey;
+          });
+          
+          if (canKongWithDrawn) {
+            // 自動加槓
+            const kongMeld = aks.find(ak => {
+              const meld = me.melds[ak.meldIndex];
+              return meld && meld.type === 'pong' && tileKey(meld.tiles[0]) === drawnKey;
+            });
+            if (kongMeld) {
+              doAddedKong(0, kongMeld.meldIndex);
+              return;
+            }
+          }
+        }
+        
+        // 檢查暗槓
+        const cks = canConcealedKong(0);
+        if (cks.length > 0) {
+          // 檢查摸到的牌是否可以用來暗槓
+          const drawnKey = tileKey(t);
+          if (cks.includes(drawnKey)) {
+            // 自動暗槓
+            doConcealedKong(0, drawnKey);
+            return;
+          }
+        }
+        
+        // 如果沒有加槓或暗槓的機會，且已報聽，自動丟掉摸到的牌
+        if (me.declaredListen && me.drawnTile) {
+          // 檢查丟掉摸到的牌後是否還能保持聽牌
+          const testHand = me.hand.filter(t => t !== me.drawnTile);
+          const canKeepListening = isListening(testHand, me.melds);
+          
+          if (canKeepListening || me.tingLocked) {
+            // 如果能保持聽牌或已鎖定，自動丟掉摸到的牌
+            setTimeout(() => {
+              discard(0, me.drawnTile);
+            }, 500); // 稍微延遲，讓玩家看到摸到的牌
+            return;
+          }
+        }
       }
     }
   } else {
@@ -3576,12 +3692,16 @@ function renderAll() {
   // 按鈕狀態
   const btnHu = document.getElementById('btnHu');
   btnHu.disabled = true;
-  if (S.turn === 0 && S.phase !== 'end') {
-    const total = me.hand.length + me.melds.reduce((sum, m) => sum + m.tiles.length, 0);
-    const expectedFull = (S.dealer === 0 ? 17 : 16) + kongCount;
-    if (total === expectedFull && me.hand.length > 0) {
-      const lastTile = me.hand[me.hand.length - 1];
-      if (isWinningNow(me.hand, me.melds, lastTile)) {
+  if (S.turn === 0 && S.phase !== 'end' && S.waitReact === null) {
+    // 檢查自摸：如果有摸到的牌，檢查是否能胡
+    if (me.drawnTile && me.hand.includes(me.drawnTile)) {
+      if (isWinningNow(me.hand, me.melds, me.drawnTile)) {
+        btnHu.disabled = false;
+      }
+    }
+    // 檢查榮胡：如果有lastDiscard且能胡
+    else if (S.lastDiscard && S.lastDiscard.from !== 0) {
+      if (canWinOn(0, S.lastDiscard.tile)) {
         btnHu.disabled = false;
       }
     }
@@ -3606,6 +3726,14 @@ function renderAll() {
     // 如果手牌是空的（已經丟過牌），檢查當前是否已經聽牌
     else if (totalTilesMe === expectedEmpty) {
       canListenBtn = isListening(me.hand, me.melds);
+    }
+    // 一進聽：檢查丟掉任意一張牌後是否能聽牌（手牌數量在合理範圍內）
+    else {
+      // 檢查是否一進聽（丟掉一張牌就能聽牌）
+      canListenBtn = me.hand.some(tile => {
+        const testHand = me.hand.filter(t => t !== tile);
+        return isListening(testHand, me.melds);
+      });
     }
   }
   document.getElementById('btnListen').disabled = !canListenBtn;
@@ -3752,7 +3880,7 @@ document.getElementById('btnHu').onclick = () => {
 
 document.getElementById('btnListen').onclick = () => {
   initAudio();
-  if (S.turn !== 0 || S.phase === 'end') return;
+  if (S.turn !== 0 || S.phase === 'end' || S.waitReact !== null) return;
   const me = S.players[0];
   if (me.declaredListen) return;
   
@@ -3762,13 +3890,38 @@ document.getElementById('btnListen').onclick = () => {
   const expectedEmpty = (S.dealer === 0 ? 16 : 15) + kongCount;
   
   let canListen = false;
+  let listenAfterDiscard = false;
+  let discardTile = null;
+  
+  // 如果手牌是滿的（剛摸到牌），檢查丟掉一張後是否能聽牌
   if (total === expectedFull) {
-    canListen = me.hand.some(tile => {
+    // 找到能聽牌的丟牌選擇
+    for (const tile of me.hand) {
       const testHand = me.hand.filter(t => t !== tile);
-      return isListening(testHand, me.melds);
-    });
-  } else if (total === expectedEmpty) {
+      if (isListening(testHand, me.melds)) {
+        canListen = true;
+        listenAfterDiscard = true;
+        discardTile = tile;
+        break;
+      }
+    }
+  } 
+  // 如果手牌是空的（已經丟過牌），檢查當前是否已經聽牌
+  else if (total === expectedEmpty) {
     canListen = isListening(me.hand, me.melds);
+  }
+  // 一進聽：檢查丟掉任意一張牌後是否能聽牌
+  else {
+    // 檢查是否一進聽（丟掉一張牌就能聽牌）
+    for (const tile of me.hand) {
+      const testHand = me.hand.filter(t => t !== tile);
+      if (isListening(testHand, me.melds)) {
+        canListen = true;
+        listenAfterDiscard = true;
+        discardTile = tile;
+        break;
+      }
+    }
   }
   
   if (!canListen) {
@@ -3777,14 +3930,27 @@ document.getElementById('btnListen').onclick = () => {
   }
   
   me.declaredListen = true;
-  me.tingLocked = false;
   updateTianDiTing(0);
-  const waits = calcWaitingTiles(me.hand, me.melds);
+  
+  // 計算等牌
+  let waits = [];
+  if (listenAfterDiscard && discardTile) {
+    // 如果丟掉某張牌後能聽牌，計算丟牌後的等牌
+    const testHand = me.hand.filter(t => t !== discardTile);
+    waits = calcWaitingTiles(testHand, me.melds);
+    me.tingLocked = true; // 鎖定聽牌，必須丟掉這張牌
+    log('🔔 你報聽了！');
+    log('👂 等牌：' + waits.map(k => keyToText(k)).join(' '));
+    log('⚠️ 請立即打出 ' + keyToText(tileKey(discardTile)) + ' 以完成聽牌');
+  } else {
+    // 已經聽牌，直接計算等牌
+    waits = calcWaitingTiles(me.hand, me.melds);
+    me.tingLocked = false; // 不鎖定，可以打任意能保持聽牌的牌
+    log('🔔 你報聽了！');
+    log('👂 等牌：' + waits.map(k => keyToText(k)).join(' '));
+  }
+  
   me.waitKeys = waits.slice();
-  const waitText = waits.map(k => keyToText(k)).join(' ');
-  log('🔔 你報聽了！');
-  log('👂 等牌：' + waitText);
-  log('⚠️ 請選擇一張手牌打出以完成聽牌');
   SoundEffects.listen();
   showEffect('🔔 聽牌', '#2dd4bf', '44px');
   renderAll();
@@ -3854,20 +4020,26 @@ function onClickYourTile(idx) {
   }
   
   if (me.declaredListen && me.tingLocked) {
-    if (me.drawnTile) {
+    // 如果鎖定聽牌，檢查是否有指定的丟牌
+    // 鎖定聽牌時，應該丟掉報聽時確定的那張牌
+    const kongCount = countKongs(me);
+    const total = me.hand.length + me.melds.reduce((s, m) => s + m.tiles.length, 0);
+    const expectedFull = (S.dealer === 0 ? 17 : 16) + kongCount;
+    
+    // 如果手牌是滿的，必須丟掉能形成聽牌的牌
+    if (total === expectedFull) {
+      const selected = me.hand[idx];
+      const testHand = me.hand.filter(t => t !== selected);
+      if (!isListening(testHand, me.melds)) {
+        log('⚠️ 已鎖定聽牌，只能打能形成聽牌的牌');
+        return;
+      }
+    } else if (me.drawnTile) {
+      // 如果剛摸到牌，只能打摸到的牌
       const selected = me.hand[idx];
       if (selected !== me.drawnTile) {
         log('⚠️ 已鎖定聽牌，只能打剛摸的牌');
         return;
-      }
-    } else {
-      // 如果剛摸到牌，只能打摸到的牌
-      if (me.drawnTile && me.hand.includes(me.drawnTile)) {
-        const drawnIdx = me.hand.findIndex(t => t === me.drawnTile);
-        if (idx !== drawnIdx) {
-          log('⚠️ 已鎖定聽牌，只能打剛摸的牌');
-          return;
-        }
       }
     }
   }
