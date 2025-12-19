@@ -144,10 +144,11 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 8px 12px;
+  gap: 4px;
+  padding: 6px 8px;
   overflow-y: auto;
   min-height: 0;
+  max-height: calc(100vh - 500px);
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
 }
@@ -155,9 +156,10 @@ body {
 .opponent-card {
   background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-secondary) 100%);
   border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  padding: 10px 12px;
+  border-radius: 10px;
+  padding: 8px 10px;
   transition: all 0.3s ease;
+  flex-shrink: 0;
 }
 
 .opponent-card.active-turn {
@@ -169,7 +171,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .opponent-name {
@@ -226,19 +228,23 @@ body {
 
 .opponent-content {
   display: flex;
-  gap: 8px;
+  gap: 6px;
+  align-items: flex-start;
 }
 
 .discard-zone {
   flex: 1;
-  min-height: 36px;
+  min-height: 32px;
+  max-height: 60px;
   background: rgba(0,0,0,0.2);
-  border-radius: 8px;
-  padding: 6px;
+  border-radius: 6px;
+  padding: 4px;
   display: flex;
   flex-wrap: wrap;
-  gap: 3px;
+  gap: 2px;
   align-content: flex-start;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .discard-zone-label {
@@ -252,8 +258,9 @@ body {
 .meld-zone {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  min-width: 80px;
+  gap: 3px;
+  min-width: 70px;
+  flex-shrink: 0;
 }
 
 .meld-group {
@@ -347,33 +354,52 @@ body {
 
 /* ===== 戰況面板 ===== */
 .log-panel {
-  background: rgba(0,0,0,0.3);
+  background: rgba(0,0,0,0.4);
   border-top: 1px solid var(--border-subtle);
-  padding: 8px 12px;
-  max-height: 80px;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
+  padding: 0;
+  height: 90px;
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
 }
 
-.log-panel::-webkit-scrollbar {
-  width: 4px;
-}
-
-.log-panel::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.log-panel::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.2);
-  border-radius: 2px;
+.log-header {
+  padding: 4px 12px;
+  font-size: 10px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+  background: rgba(0,0,0,0.2);
 }
 
 #log {
   font-size: 11px;
   line-height: 1.6;
   color: var(--text-secondary);
+  padding: 8px 12px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+}
+
+#log::-webkit-scrollbar {
+  width: 4px;
+}
+
+#log::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#log::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.2);
+  border-radius: 2px;
 }
 
 #log .my-log {
@@ -384,18 +410,19 @@ body {
 .my-hand-area {
   background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-card) 100%);
   border-top: 2px solid var(--accent-jade);
-  padding: 12px 8px calc(16px + var(--safe-bottom));
+  padding: 10px 8px calc(14px + var(--safe-bottom));
   box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
   position: relative;
   z-index: 10;
+  flex-shrink: 0;
 }
 
 .hand-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
-  padding: 0 8px;
+  margin-bottom: 8px;
+  padding: 0 4px;
 }
 
 .hand-title {
@@ -427,11 +454,11 @@ body {
 .hand-tiles {
   display: flex;
   justify-content: center;
-  gap: 4px;
+  gap: 3px;
   flex-wrap: wrap;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   padding: 4px 0;
-  min-height: 60px;
+  min-height: 56px;
   align-items: center;
 }
 
@@ -802,12 +829,21 @@ body {
   }
   
   .log-panel {
-    max-height: 60px;
-    padding: 6px 10px;
+    height: 75px;
+  }
+  
+  .log-header {
+    padding: 3px 10px;
+    font-size: 9px;
   }
   
   #log {
     font-size: 10px;
+    padding: 6px 10px;
+  }
+  
+  .opponents-area {
+    max-height: calc(100vh - 480px);
   }
 }
 
@@ -887,8 +923,21 @@ body {
   }
   
   .log-panel {
-    max-height: 50px;
+    height: 65px;
+  }
+  
+  .log-header {
+    padding: 2px 8px;
+    font-size: 8px;
+  }
+  
+  #log {
     padding: 4px 8px;
+    font-size: 9px;
+  }
+  
+  .opponents-area {
+    max-height: calc(100vh - 420px);
   }
   
   .my-hand-area {
@@ -968,6 +1017,7 @@ body {
 
 <!-- 戰況記錄 -->
 <div class="log-panel">
+  <div class="log-header">📋 戰況記錄</div>
   <div id="log"></div>
 </div>
 
@@ -1088,9 +1138,14 @@ function log(msg) {
   const formatted = formatLogString(msg);
   line.innerHTML = formatted;
   line.style.marginBottom = '4px';
+  line.style.flexShrink = '0';
   if (/你/.test(msg)) line.classList.add('my-log');
   el.appendChild(line);
-  el.scrollTop = el.scrollHeight;
+  
+  // 確保滾動到底部（顯示最新內容）
+  requestAnimationFrame(() => {
+    el.scrollTop = el.scrollHeight;
+  });
 }
 
 function formatLogString(text) {
