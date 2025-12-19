@@ -66,12 +66,16 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 10px 16px;
+  padding-top: calc(10px + var(--safe-top));
   background: linear-gradient(180deg, rgba(30,58,95,0.95) 0%, rgba(22,34,54,0.9) 100%);
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border-subtle);
   position: sticky;
   top: 0;
   z-index: 100;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .round-badge {
@@ -144,6 +148,8 @@ body {
   padding: 8px 12px;
   overflow-y: auto;
   min-height: 0;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 .opponent-card {
@@ -294,6 +300,8 @@ body {
   font-size: 16px;
   padding: 4px;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .tile-md:hover {
@@ -303,6 +311,13 @@ body {
 
 .tile-md:active {
   transform: translateY(-2px) scale(0.98);
+}
+
+/* 觸控設備優化 */
+@media (hover: none) {
+  .tile-md:hover {
+    transform: none;
+  }
 }
 
 /* 花色顏色 */
@@ -337,6 +352,9 @@ body {
   padding: 8px 12px;
   max-height: 80px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  flex-shrink: 0;
 }
 
 .log-panel::-webkit-scrollbar {
@@ -366,8 +384,10 @@ body {
 .my-hand-area {
   background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-card) 100%);
   border-top: 2px solid var(--accent-jade);
-  padding: 12px 8px 16px;
+  padding: 12px 8px calc(16px + var(--safe-bottom));
   box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+  position: relative;
+  z-index: 10;
 }
 
 .hand-header {
@@ -410,6 +430,9 @@ body {
   gap: 4px;
   flex-wrap: wrap;
   margin-bottom: 10px;
+  padding: 4px 0;
+  min-height: 60px;
+  align-items: center;
 }
 
 .my-melds {
@@ -443,6 +466,7 @@ body {
   padding: 8px;
   flex-wrap: wrap;
   justify-content: center;
+  -webkit-overflow-scrolling: touch;
 }
 
 .btn {
@@ -461,6 +485,9 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 2px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(255,255,255,0.1);
+  user-select: none;
 }
 
 .btn:disabled {
@@ -530,11 +557,14 @@ body {
   inset: 0;
   background: rgba(0,0,0,0.7);
   backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   z-index: 200;
   display: none;
   align-items: center;
   justify-content: center;
   padding: 20px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .modal-overlay.show {
@@ -547,9 +577,12 @@ body {
   border-radius: 20px;
   padding: 24px;
   max-width: 90%;
-  max-height: 80vh;
+  max-height: 85vh;
   overflow-y: auto;
   box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  margin: auto;
 }
 
 .modal-title {
@@ -652,19 +685,130 @@ body {
 
 /* ===== 響應式調整 ===== */
 @media (max-width: 380px) {
-  .tile-md {
-    min-width: 32px;
-    height: 44px;
+  .status-bar {
+    padding: 8px 12px;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  
+  .round-badge {
+    font-size: 11px;
+    padding: 5px 10px;
+  }
+  
+  .remain-badge {
+    font-size: 11px;
+    padding: 5px 10px;
+  }
+  
+  .remain-badge strong {
     font-size: 14px;
   }
   
+  .tile-md {
+    min-width: 30px;
+    height: 42px;
+    font-size: 13px;
+    padding: 3px;
+  }
+  
+  .tile-sm {
+    min-width: 24px;
+    height: 32px;
+    font-size: 11px;
+    padding: 2px;
+  }
+  
+  .tile-xs {
+    min-width: 18px;
+    height: 24px;
+    font-size: 9px;
+    padding: 1px 3px;
+  }
+  
   .btn {
-    min-width: 50px;
-    padding: 10px 6px;
+    min-width: 55px;
+    padding: 12px 6px;
+    font-size: 12px;
   }
   
   .btn-icon { font-size: 16px; }
-  .btn-text { font-size: 10px; }
+  .btn-text { font-size: 9px; }
+  
+  .opponent-card {
+    padding: 8px 10px;
+  }
+  
+  .opponent-name {
+    font-size: 12px;
+  }
+  
+  .opponent-score {
+    font-size: 13px;
+  }
+  
+  .my-score {
+    font-size: 16px;
+  }
+  
+  .hand-title {
+    font-size: 12px;
+  }
+  
+  .modal-content {
+    padding: 16px;
+    max-width: 95%;
+  }
+  
+  .modal-title {
+    font-size: 18px;
+  }
+  
+  .gold-display {
+    padding: 6px 10px;
+  }
+  
+  .gold-tile {
+    padding: 3px 8px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .controls-bar {
+    gap: 4px;
+    padding: 6px;
+  }
+  
+  .btn {
+    min-width: 60px;
+    padding: 14px 8px;
+    font-size: 12px;
+  }
+  
+  .hand-tiles {
+    gap: 3px;
+  }
+  
+  .opponents-area {
+    padding: 6px 10px;
+    gap: 4px;
+  }
+  
+  .discard-zone {
+    min-height: 32px;
+    padding: 4px;
+    gap: 2px;
+  }
+  
+  .log-panel {
+    max-height: 60px;
+    padding: 6px 10px;
+  }
+  
+  #log {
+    font-size: 10px;
+  }
 }
 
 @media (min-width: 500px) {
@@ -676,6 +820,108 @@ body {
   .opponent-card {
     flex: 1 1 calc(50% - 4px);
     min-width: 200px;
+  }
+}
+
+@media (min-width: 768px) {
+  .opponent-card {
+    flex: 1 1 calc(33.333% - 6px);
+    min-width: 220px;
+  }
+  
+  .tile-md {
+    min-width: 40px;
+    height: 52px;
+    font-size: 17px;
+  }
+  
+  .btn {
+    min-width: 80px;
+    padding: 14px 12px;
+  }
+}
+
+/* 觸控優化 */
+@media (hover: none) and (pointer: coarse) {
+  .tile-md {
+    min-width: 36px;
+    height: 48px;
+    cursor: default;
+  }
+  
+  .tile-md:active {
+    transform: translateY(-2px) scale(0.97);
+  }
+  
+  .btn {
+    min-width: 64px;
+    padding: 14px 10px;
+    touch-action: manipulation;
+  }
+  
+  .btn:active {
+    transform: scale(0.95);
+  }
+  
+  /* 移除 hover 效果，改用 active */
+  .tile-md:hover {
+    transform: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.8);
+  }
+}
+
+/* 橫屏模式優化 */
+@media (orientation: landscape) and (max-height: 600px) {
+  .status-bar {
+    padding: 6px 12px;
+    padding-top: calc(6px + var(--safe-top));
+  }
+  
+  .opponents-area {
+    max-height: 120px;
+    padding: 4px 8px;
+  }
+  
+  .opponent-card {
+    padding: 6px 8px;
+  }
+  
+  .log-panel {
+    max-height: 50px;
+    padding: 4px 8px;
+  }
+  
+  .my-hand-area {
+    padding: 8px 6px calc(12px + var(--safe-bottom));
+  }
+  
+  .hand-tiles {
+    margin-bottom: 6px;
+    min-height: 50px;
+  }
+  
+  .controls-bar {
+    padding: 4px;
+    gap: 4px;
+  }
+  
+  .btn {
+    padding: 10px 6px;
+    font-size: 11px;
+  }
+  
+  .btn-icon {
+    font-size: 16px;
+  }
+  
+  .btn-text {
+    font-size: 9px;
+  }
+  
+  .tile-md {
+    min-width: 32px;
+    height: 44px;
+    font-size: 14px;
   }
 }
 
@@ -704,8 +950,8 @@ body {
   <div class="remain-badge">
     🎴 剩餘 <strong id="centerRemain">56</strong> 張
   </div>
-  <button class="btn btn-gold" id="newGameBtn" style="padding: 8px 12px; min-width: auto; flex: none;">
-    <span style="font-size: 14px;">🎮 新局</span>
+  <button class="btn btn-gold" id="newGameBtn" style="padding: 8px 12px; min-width: auto; flex: none; font-size: 12px;">
+    <span style="font-size: 12px;">🎮 新局</span>
   </button>
 </div>
 
@@ -929,19 +1175,52 @@ const RULES = {
   handSize: 16,
   gold: { enabled: true, initial: 3, maxExtra: 2, totalMax: 5, perGold: 1, winOnGold: 3 },
   scoring: {
-    SelfDraw: 1,
-    MenqingSelfDraw: 3,
-    AllPungs: 2,
-    SevenPairs: 4,
-    HalfFlush: 3,
-    PureOneSuit: 5,
+    // 基本台型
+    SelfDraw: 1,              // 自摸
+    MenqingSelfDraw: 3,       // 門清自摸
+    DeclaredListen: 1,        // 報聽
+    EarthReady: 4,            // 地聽
+    HeavenReady: 8,           // 天聽
+    
+    // 特殊牌型
+    AllPungs: 2,              // 對對胡
+    HalfFlush: 3,             // 混一色
+    PureOneSuit: 5,           // 清一色
+    AllChows: 1,              // 全求人（全部吃碰）
+    ThreeConcealedPungs: 2,    // 三暗刻
+    FourConcealedPungs: 5,    // 四暗刻
+    FiveConcealedPungs: 8,    // 五暗刻
+    
+    // 三元牌
+    BigThreeDragons: 8,       // 大三元
+    LittleThreeDragons: 4,    // 小三元
+    
+    // 四喜牌
+    BigFourWinds: 8,          // 大四喜
+    LittleFourWinds: 4,       // 小四喜
+    
+    // 字牌組合
+    AllHonors: 8,             // 字一色
+    AllTerminals: 8,          // 清老頭
+    AllTerminalsAndHonors: 4, // 混老頭
+    
+    // 特殊牌型
+    NineGates: 8,             // 九蓮寶燈
+    FourKongs: 8,             // 四槓子
+    ThreeKongs: 2,            // 三槓子
+    
+    // 特殊情況
+    RobKong: 1,               // 搶槓
+    Rinshan: 1,               // 槓上開花
+    Haitei: 1,                // 海底撈月（自摸最後一張）
+    Houtei: 1,                // 河底撈魚（胡最後一張）
+    
+    // 風牌（座風/圈風）
+    SeatWind: 1,              // 座風
+    RoundWind: 1,             // 圈風
+    
+    // 花牌（如果有）
     Flower: 1,
-    Wind: 1,
-    RobKong: 1,
-    Rinshan: 1,
-    Haitei: 1,
-    EarthReady: 4,
-    HeavenReady: 8
   },
   points: { base: 2000, perFan: 1000 },
   initialPoints: 100000
@@ -1039,7 +1318,8 @@ function startNewHand(isFirstGame = false) {
       tianTing: false,
       diTing: false,
       isAI: i !== 0,
-      rinshan: false
+      rinshan: false,
+      drawCount: 0
     })),
     goldKeys: [],
     kongCount: 0,
@@ -1130,11 +1410,13 @@ function countKongs(pl) {
 function updateTianDiTing(pid) {
   const pl = S.players[pid];
   if (S.anyOpenMeld) return;
-  if (pid === S.dealer && S.drawCount === 1) {
+  // 天聽：莊家第一次摸牌後就聽牌
+  if (pid === S.dealer && pl.drawCount === 1) {
     pl.tianTing = true;
     return;
   }
-  if (S.drawCount <= 8) {
+  // 地聽：非莊家前8次摸牌內（不包括莊家的第一次）
+  if (pid !== S.dealer && pl.drawCount <= 8) {
     pl.diTing = true;
   }
 }
@@ -1142,8 +1424,13 @@ function updateTianDiTing(pid) {
 /* ========= 胡牌判定 ========= */
 function isWinningNow(hand, melds, winTile) {
   const tiles = hand.slice().sort((a, b) => tileSortKey(a) - tileSortKey(b));
-  if (melds.length === 0 && isSevenPairs(tiles)) return true;
-  const neededSets = Math.max(0, 5 - melds.length);
+  // 計算實際需要的順子/刻子數量（每個副露佔1個，每個槓佔1個）
+  // 16張麻將：5個順子/刻子 + 1個將（對子）= 16張手牌
+  const kongCount = melds.filter(m => m.type === 'kong').length;
+  const nonKongMelds = melds.filter(m => m.type !== 'kong').length;
+  const totalMelds = nonKongMelds + kongCount;
+  const neededSets = Math.max(0, 5 - totalMelds);
+  
   return canStandardWin(tiles, neededSets);
 }
 
@@ -1203,12 +1490,6 @@ function calcWaitingTiles(hand, melds) {
   return waits;
 }
 
-function isSevenPairs(tiles) {
-  if (tiles.length !== 16) return false;
-  const m = countByKey(tiles);
-  const vals = Object.values(m);
-  return vals.filter(x => x === 2).length === 8 && vals.every(x => x === 2 || x === 0);
-}
 
 function canStandardWin(tiles, need = 5) {
   const counts = countByKey(tiles);
@@ -1579,7 +1860,21 @@ function doAddedKong(pid, meldIndex) {
     }
   }
   if (idx < 0) return;
-  const tile = pl.hand.splice(idx, 1)[0];
+  const tile = pl.hand[idx]; // 先不移除，先檢查搶槓
+  
+  // 檢查是否有其他人可以搶槓胡
+  for (let other = 0; other < 4; other++) {
+    if (other !== pid && canWinOn(other, tile)) {
+      // 有人可以搶槓，執行搶槓胡
+      S.robKong = true;
+      pl.hand.splice(idx, 1); // 現在才移除牌
+      doWin(other, pid, tile, false);
+      return;
+    }
+  }
+  
+  // 沒有人搶槓，執行加槓
+  pl.hand.splice(idx, 1);
   meld.tiles.push(tile);
   meld.type = 'kong';
   meld.added = true;
@@ -1686,7 +1981,7 @@ function doKong(pid, tile) {
     if (!me.declaredListen) {
       const kongCount = countKongs(me);
       const totalTiles = me.hand.length + me.melds.reduce((sum, m) => sum + m.tiles.length, 0);
-      const expectedFull = 17 + kongCount;
+      const expectedFull = (S.dealer === 0 ? 17 : 16) + kongCount;
       if (totalTiles === expectedFull) {
         const canListenNow = me.hand.some(tile2 => {
           const testHand = me.hand.filter(t => t !== tile2);
@@ -1720,8 +2015,8 @@ function discard(p, tile) {
     const pl = S.players[p];
     const kc = countKongs(pl);
     const totalP = pl.hand.length + pl.melds.reduce((sum, m) => sum + m.tiles.length, 0);
-    const expFull = 17 + kc;
-    const expEmpty = 16 + kc;
+    const expFull = (S.dealer === p ? 17 : 16) + kc;
+    const expEmpty = (S.dealer === p ? 16 : 15) + kc;
     let ting = false;
     if (totalP === expFull) {
       ting = pl.hand.some(tt => {
@@ -1744,22 +2039,30 @@ function discard(p, tile) {
   }
   
   let reactions = [];
+  // 按照優先級順序檢查：胡 > 槓 > 碰 > 吃
+  // 注意：每個玩家只能有一種反應，優先級高的會覆蓋低的
   for (let k = 1; k <= 3; k++) {
     const pid = (p + k) % 4;
     if (pid === p) continue;
     
+    // 優先級1：胡牌（最高優先級）
     if (canWinOn(pid, tile)) {
-      reactions.push({ pid, type: 'hu', tile });
+      reactions.push({ pid, type: 'hu', tile, priority: 1 });
     }
-    if (canKong(pid, tile)) {
-      reactions.push({ pid, type: 'kong', tile });
+    // 優先級2：槓
+    else if (canKong(pid, tile)) {
+      reactions.push({ pid, type: 'kong', tile, priority: 2 });
     }
-    if (canPong(pid, tile)) {
-      reactions.push({ pid, type: 'pong', tile });
+    // 優先級3：碰
+    else if (canPong(pid, tile)) {
+      reactions.push({ pid, type: 'pong', tile, priority: 3 });
     }
-    const chowPatterns = canChow(pid, tile);
-    if (chowPatterns.length > 0) {
-      reactions.push({ pid, type: 'chow', tile, patterns: chowPatterns });
+    // 優先級4：吃（只能吃上家的牌）
+    else {
+      const chowPatterns = canChow(pid, tile);
+      if (chowPatterns.length > 0) {
+        reactions.push({ pid, type: 'chow', tile, patterns: chowPatterns, priority: 4 });
+      }
     }
   }
   
@@ -2068,18 +2371,92 @@ function calcFanDetails(winner, winTile, selfDraw) {
   let fan = 0;
   const categories = [];
   
-  if (isSevenPairs(pl.hand.concat([winTile]))) {
-    fan += RULES.scoring.SevenPairs;
-    categories.push('七對');
+  // 獲取座風和圈風
+  const seatWind = seatNames[winner] || '東';
+  const roundWind = ['東', '南', '西', '北'][S.round - 1] || '東';
+  
+  // ========= 特殊大牌型（優先判定，互斥） =========
+  
+  // 九蓮寶燈
+  if (checkNineGates(pl, winTile)) {
+    fan += RULES.scoring.NineGates;
+    categories.push('九蓮寶燈');
+    // 九蓮寶燈通常不與其他台型疊加，但這裡我們繼續檢查其他台型
   }
   
-  const kinds = countByKey(pl.hand.concat([winTile]));
-  const allTrip = isAllPungsPossible(kinds);
-  if (allTrip) {
-    fan += RULES.scoring.AllPungs;
-    categories.push('對對胡');
+  // 四槓子
+  const kongType = checkKongs(pl);
+  if (kongType === 'four') {
+    fan += RULES.scoring.FourKongs;
+    categories.push('四槓子');
   }
   
+  // 大四喜
+  const fourWinds = checkFourWinds(pl, winTile, seatWind, roundWind);
+  if (fourWinds === 'big') {
+    fan += RULES.scoring.BigFourWinds;
+    categories.push('大四喜');
+  }
+  
+  // 大三元
+  const threeDragons = checkThreeDragons(pl, winTile);
+  if (threeDragons === 'big') {
+    fan += RULES.scoring.BigThreeDragons;
+    categories.push('大三元');
+  }
+  
+  // 字一色
+  if (checkAllHonors(pl, winTile)) {
+    fan += RULES.scoring.AllHonors;
+    categories.push('字一色');
+  }
+  
+  // 清老頭
+  if (checkAllTerminals(pl, winTile)) {
+    fan += RULES.scoring.AllTerminals;
+    categories.push('清老頭');
+  }
+  
+  // ========= 其他特殊牌型 =========
+  
+  // 小四喜
+  if (fourWinds === 'little') {
+    fan += RULES.scoring.LittleFourWinds;
+    categories.push('小四喜');
+  }
+  
+  // 小三元
+  if (threeDragons === 'little') {
+    fan += RULES.scoring.LittleThreeDragons;
+    categories.push('小三元');
+  }
+  
+  // 混老頭
+  if (checkAllTerminalsAndHonors(pl, winTile)) {
+    fan += RULES.scoring.AllTerminalsAndHonors;
+    categories.push('混老頭');
+  }
+  
+  // 五暗刻
+  const concealedPungs = checkConcealedPungs(pl);
+  if (concealedPungs >= 5) {
+    fan += RULES.scoring.FiveConcealedPungs;
+    categories.push('五暗刻');
+  } else if (concealedPungs >= 4) {
+    fan += RULES.scoring.FourConcealedPungs;
+    categories.push('四暗刻');
+  } else if (concealedPungs >= 3) {
+    fan += RULES.scoring.ThreeConcealedPungs;
+    categories.push('三暗刻');
+  }
+  
+  // 三槓子
+  if (kongType === 'three') {
+    fan += RULES.scoring.ThreeKongs;
+    categories.push('三槓子');
+  }
+  
+  // 清一色
   const suitCnt = { W: 0, T: 0, B: 0 };
   let honors = 0;
   for (const t of allTiles) {
@@ -2097,17 +2474,48 @@ function calcFanDetails(winner, winTile, selfDraw) {
     categories.push('混一色');
   }
   
+  // 對對胡
+  const kinds = countByKey(pl.hand.concat([winTile]));
+  const allTrip = isAllPungsPossible(kinds);
+  if (allTrip) {
+    fan += RULES.scoring.AllPungs;
+    categories.push('對對胡');
+  }
+  
+  // 全求人
+  if (checkAllChows(pl)) {
+    fan += RULES.scoring.AllChows;
+    categories.push('全求人');
+  }
+  
+  // ========= 特殊情況 =========
+  
+  // 天聽
   if (pl.tianTing) {
     fan += RULES.scoring.HeavenReady;
     categories.push('天聽');
   } else if (pl.diTing) {
+    // 地聽
     fan += RULES.scoring.EarthReady;
     categories.push('地聽');
   } else if (pl.declaredListen) {
-    fan += 1;
+    // 報聽
+    fan += RULES.scoring.DeclaredListen;
     categories.push('報聽');
   }
   
+  // 座風和圈風
+  const winds = checkSeatAndRoundWind(pl, winTile, seatWind, roundWind);
+  if (winds.seatWind) {
+    fan += RULES.scoring.SeatWind;
+    categories.push('座風');
+  }
+  if (winds.roundWind && !winds.seatWind) { // 如果座風和圈風相同，只算一次
+    fan += RULES.scoring.RoundWind;
+    categories.push('圈風');
+  }
+  
+    // 自摸相關
   if (selfDraw) {
     const menqing = pl.melds.length === 0;
     if (menqing) {
@@ -2117,18 +2525,35 @@ function calcFanDetails(winner, winTile, selfDraw) {
       fan += RULES.scoring.SelfDraw;
       categories.push('自摸');
     }
+    
+    // 海底撈月：自摸最後一張牌（牌山已空，從王牌摸最後一張）
+    const dead = 16 + S.kongCount;
+    if (S.wall.length === 0 && S.deadWall.length > 0 && S.deadWall.length <= dead) {
+      fan += RULES.scoring.Haitei;
+      categories.push('海底撈月');
+    }
+  } else {
+    // 河底撈魚：胡別人打的最後一張牌（牌山和王牌都已空）
+    const dead = 16 + S.kongCount;
+    if (S.wall.length === 0 && S.deadWall.length === 0) {
+      fan += RULES.scoring.Houtei;
+      categories.push('河底撈魚');
+    }
   }
   
+  // 搶槓
   if (S.robKong) {
     fan += RULES.scoring.RobKong;
     categories.push('搶槓');
   }
   
+  // 槓上開花
   if (selfDraw && pl.rinshan) {
     fan += RULES.scoring.Rinshan;
     categories.push('槓上開花');
   }
   
+  // 金牌相關
   if (S.rules.gold.enabled) {
     const keys = allTiles.map(tileKey);
     const goldOwned = keys.filter(k => S.goldKeys.includes(k)).length;
@@ -2140,7 +2565,12 @@ function calcFanDetails(winner, winTile, selfDraw) {
     }
   }
   
-  if (categories.length === 0) categories.push('平胡');
+  // 如果沒有任何台型，算平胡
+  if (categories.length === 0) {
+    categories.push('平胡');
+    fan = 1; // 平胡至少1台
+  }
+  
   return { fan: Math.max(1, fan), categories };
 }
 
@@ -2154,6 +2584,178 @@ function isAllPungsPossible(counts) {
     else if (c === 1) return false;
   }
   return pairs === 1 && triples >= 4;
+}
+
+/* ========= 台型判定函數 ========= */
+function checkAllChows(pl) {
+  // 全求人：所有副露都是吃或碰，且最後一張是別人打的
+  if (pl.melds.length === 0) return false;
+  if (pl.melds.length < 5) return false;
+  const allChowsOrPongs = pl.melds.every(m => m.type === 'chow' || m.type === 'pong');
+  return allChowsOrPongs && pl.hand.length === 1;
+}
+
+function checkConcealedPungs(pl) {
+  // 計算暗刻數量
+  // 1. 手牌中的刻子（3張相同，且沒有副露）
+  const handCounts = countByKey(pl.hand);
+  let concealedPungs = 0;
+  for (const k in handCounts) {
+    // 檢查是否有對應的明刻或明槓
+    const hasOpenMeld = pl.melds.some(m => {
+      if (m.type === 'pong' || (m.type === 'kong' && !m.concealed)) {
+        return tileKey(m.tiles[0]) === k;
+      }
+      return false;
+    });
+    // 如果手牌中有3張或4張相同，且沒有明刻，算作暗刻
+    if (handCounts[k] >= 3 && !hasOpenMeld) {
+      concealedPungs++;
+    }
+  }
+  // 2. 加上暗槓（暗槓也算暗刻）
+  const concealedKongs = pl.melds.filter(m => m.type === 'kong' && m.concealed).length;
+  return concealedPungs + concealedKongs;
+}
+
+function checkThreeDragons(pl, winTile) {
+  // 檢查三元牌
+  const allTiles = pl.hand.concat([winTile]).concat(pl.melds.flatMap(m => m.tiles));
+  const dragonCounts = { C: 0, F: 0, B: 0 }; // 中發白
+  for (const t of allTiles) {
+    if (t.suit === SUIT_D) {
+      dragonCounts[t.name] = (dragonCounts[t.name] || 0) + 1;
+    }
+  }
+  const hasAll = dragonCounts.C >= 3 && dragonCounts.F >= 3 && dragonCounts.B >= 3;
+  const hasTwo = Object.values(dragonCounts).filter(c => c >= 3).length === 2;
+  const hasPair = Object.values(dragonCounts).some(c => c >= 2);
+  
+  if (hasAll) return 'big'; // 大三元
+  if (hasTwo && hasPair) return 'little'; // 小三元
+  return null;
+}
+
+function checkFourWinds(pl, winTile, seatWind, roundWind) {
+  // 檢查四喜牌
+  const allTiles = pl.hand.concat([winTile]).concat(pl.melds.flatMap(m => m.tiles));
+  const windCounts = { E: 0, S: 0, W: 0, N: 0 };
+  for (const t of allTiles) {
+    if (t.suit === SUIT_F) {
+      windCounts[t.name] = (windCounts[t.name] || 0) + 1;
+    }
+  }
+  const hasAll = Object.values(windCounts).every(c => c >= 3);
+  const hasThree = Object.values(windCounts).filter(c => c >= 3).length === 3;
+  const hasPair = Object.values(windCounts).some(c => c >= 2);
+  
+  if (hasAll) return 'big'; // 大四喜
+  if (hasThree && hasPair) return 'little'; // 小四喜
+  return null;
+}
+
+function checkAllHonors(pl, winTile) {
+  // 字一色：全部是字牌（風牌+三元牌）
+  const allTiles = pl.hand.concat([winTile]).concat(pl.melds.flatMap(m => m.tiles));
+  return allTiles.every(t => t.suit === SUIT_F || t.suit === SUIT_D);
+}
+
+function checkAllTerminals(pl, winTile) {
+  // 清老頭：全部是1和9
+  const allTiles = pl.hand.concat([winTile]).concat(pl.melds.flatMap(m => m.tiles));
+  return allTiles.every(t => {
+    if (t.suit === SUIT_W || t.suit === SUIT_T || t.suit === SUIT_B) {
+      return t.rank === 1 || t.rank === 9;
+    }
+    return false;
+  });
+}
+
+function checkAllTerminalsAndHonors(pl, winTile) {
+  // 混老頭：全部是1、9或字牌
+  const allTiles = pl.hand.concat([winTile]).concat(pl.melds.flatMap(m => m.tiles));
+  return allTiles.every(t => {
+    if (t.suit === SUIT_F || t.suit === SUIT_D) return true;
+    if (t.suit === SUIT_W || t.suit === SUIT_T || t.suit === SUIT_B) {
+      return t.rank === 1 || t.rank === 9;
+    }
+    return false;
+  });
+}
+
+function checkNineGates(pl, winTile) {
+  // 九蓮寶燈：同一花色1112345678999 + 任意一張同花色
+  if (pl.melds.length > 0) return false; // 必須門清
+  
+  const allTiles = pl.hand.concat([winTile]);
+  const suitCounts = { W: [], T: [], B: [] };
+  
+  for (const t of allTiles) {
+    if (t.suit === SUIT_W || t.suit === SUIT_T || t.suit === SUIT_B) {
+      suitCounts[t.suit].push(t.rank);
+    } else {
+      return false; // 不能有字牌
+    }
+  }
+  
+  // 檢查是否只有一種花色
+  const suits = Object.keys(suitCounts).filter(s => suitCounts[s].length > 0);
+  if (suits.length !== 1) return false;
+  
+  const suit = suits[0];
+  const ranks = suitCounts[suit].sort((a, b) => a - b);
+  
+  // 必須是16張（莊家）或15張（非莊家）+ 1張胡牌 = 16張
+  if (ranks.length !== 16) return false;
+  
+  // 檢查是否符合九蓮寶燈模式：1112345678999 + 任意一張
+  const required = [1, 1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9, 9];
+  const counts = {};
+  for (const r of ranks) {
+    counts[r] = (counts[r] || 0) + 1;
+  }
+  
+  // 必須有3個1和3個9
+  if (counts[1] < 3 || counts[9] < 3) return false;
+  
+  // 2-8每個至少要有1個
+  for (let r = 2; r <= 8; r++) {
+    if (!counts[r] || counts[r] < 1) return false;
+  }
+  
+  // 總共16張，符合九蓮寶燈
+  return true;
+}
+
+function checkKongs(pl) {
+  // 計算槓的數量
+  const kongCount = pl.melds.filter(m => m.type === 'kong').length;
+  if (kongCount >= 4) return 'four'; // 四槓子
+  if (kongCount >= 3) return 'three'; // 三槓子
+  return null;
+}
+
+function checkSeatAndRoundWind(pl, winTile, seatWind, roundWind) {
+  // 檢查座風和圈風
+  const allTiles = pl.hand.concat([winTile]).concat(pl.melds.flatMap(m => m.tiles));
+  const windMap = { '東': 'E', '南': 'S', '西': 'W', '北': 'N' };
+  const seatWindCode = windMap[seatWind] || seatWind;
+  const roundWindCode = windMap[roundWind] || roundWind;
+  
+  let seatWindCount = 0;
+  let roundWindCount = 0;
+  
+  for (const t of allTiles) {
+    if (t.suit === SUIT_F) {
+      if (t.name === seatWindCode) seatWindCount++;
+      if (t.name === roundWindCode) roundWindCount++;
+    }
+  }
+  
+  const hasSeatWind = seatWindCount >= 3 || (seatWindCount >= 2 && seatWindCode === roundWindCode);
+  const hasRoundWind = roundWindCount >= 3 || (roundWindCount >= 2 && seatWindCode === roundWindCode);
+  
+  return { seatWind: hasSeatWind, roundWind: hasRoundWind };
 }
 
 /* ========= 遊戲流程 ========= */
@@ -2210,14 +2812,7 @@ function stepAI() {
   const aks = canAddedKong(pid);
   if (aks.length > 0 && Math.random() > 0.4) {
     const candidate = aks[0];
-    const tile = pl.hand.find(t => tileKey(t) === candidate.key);
-    for (let other = 0; other < 4; other++) {
-      if (other !== pid && canWinOn(other, tile)) {
-        S.robKong = true;
-        doWin(other, pid, tile, false);
-        return;
-      }
-    }
+    // 搶槓檢查已經在doAddedKong內部進行，這裡直接調用
     doAddedKong(pid, candidate.meldIndex);
     return;
   }
@@ -2237,6 +2832,7 @@ function draw(p) {
   const t = S.wall.pop();
   S.players[p].hand.push(t);
   S.players[p].drawnTile = t;
+  S.players[p].drawCount = (S.players[p].drawCount || 0) + 1;
   S.remain = S.wall.length;
   S.drawCount++;
   playSound(600, 0.1, 'sine');
@@ -2355,7 +2951,8 @@ function renderAll() {
   
   // 我的手牌
   const kongCount = countKongs(me);
-  const expectedFull = 17 + kongCount;
+  // 莊家：17 + kongCount，非莊家：16 + kongCount
+  const expectedFull = (S.dealer === 0 ? 17 : 16) + kongCount;
   const hasDrawn = (me.hand.length + me.melds.reduce((sum, m) => sum + m.tiles.length, 0)) === expectedFull;
   
   const origTiles = me.hand.map((t, idx) => ({ tile: t, index: idx }));
@@ -2440,7 +3037,7 @@ function renderAll() {
     canListenBtn = false;
   } else if (S.turn === 0 && S.phase !== 'end') {
     const totalTilesMe = me.hand.length + me.melds.reduce((sum, m) => sum + m.tiles.length, 0);
-    const expectedEmpty = 16 + kongCount;
+    const expectedEmpty = (S.dealer === 0 ? 16 : 15) + kongCount;
     if (totalTilesMe === expectedFull) {
       const canListenAfterDiscard = me.hand.some(tile => {
         const testHand = me.hand.filter(t => t !== tile);
@@ -2583,7 +3180,7 @@ document.getElementById('btnHu').onclick = () => {
   } else {
     const me = S.players[0];
     const kongCount = countKongs(me);
-    const expectedFull = 17 + kongCount;
+    const expectedFull = (S.dealer === 0 ? 17 : 16) + kongCount;
     const total = me.hand.length + me.melds.reduce((sum, m) => sum + m.tiles.length, 0);
     if (total === expectedFull && me.hand.length > 0) {
       const lastTile = me.hand[me.hand.length - 1];
@@ -2602,8 +3199,8 @@ document.getElementById('btnListen').onclick = () => {
   
   const kongCount = countKongs(me);
   const total = me.hand.length + me.melds.reduce((s, m) => s + m.tiles.length, 0);
-  const expectedFull = 17 + kongCount;
-  const expectedEmpty = 16 + kongCount;
+  const expectedFull = (S.dealer === 0 ? 17 : 16) + kongCount;
+  const expectedEmpty = (S.dealer === 0 ? 16 : 15) + kongCount;
   
   let canListen = false;
   if (total === expectedFull) {
@@ -2641,15 +3238,7 @@ document.getElementById('btnKong').onclick = () => {
   
   if (added.length > 0) {
     const cand = added[0];
-    const key = cand.key;
-    const tile = me.hand.find(t => tileKey(t) === key);
-    for (let pid = 1; pid < 4; pid++) {
-      if (canWinOn(pid, tile)) {
-        S.robKong = true;
-        doWin(pid, 0, tile, false);
-        return;
-      }
-    }
+    // 搶槓檢查已經在doAddedKong內部進行
     doAddedKong(0, cand.meldIndex);
     return;
   }
@@ -2712,7 +3301,7 @@ function onClickYourTile(idx) {
       }
     } else {
       const kongCount = countKongs(me);
-      const expectedFull = 17 + kongCount;
+      const expectedFull = (S.dealer === 0 ? 17 : 16) + kongCount;
       const totalTiles = me.hand.length + me.melds.reduce((sum, m) => sum + m.tiles.length, 0);
       const hasDrawn = (totalTiles === expectedFull);
       if (hasDrawn) {
