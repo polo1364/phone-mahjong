@@ -3051,6 +3051,7 @@ function renderAll() {
   }
   
   let handHTML = '';
+  // 先顯示其他牌（已排序）
   displayRest.forEach(item => {
     const t = item.tile;
     const idx = item.index;
@@ -3059,16 +3060,25 @@ function renderAll() {
     handHTML += `<div class="tile tile-md suit-${t.suit} ${isGold ? 'gold' : ''}" onclick="onClickYourTile(${idx})">${keyToText(k)}</div>`;
   });
   
+  // 摸到的牌顯示在最右側
   if (hasDrawn && drawnObj) {
     const t = drawnObj.tile;
     const idx = drawnObj.index;
     const k = tileKey(t);
     const isGold = S.rules.gold.enabled && S.goldKeys.includes(k);
-    handHTML += `<div style="width: 12px;"></div>`;
+    handHTML += `<div style="width: 12px; flex-shrink: 0;"></div>`;
     handHTML += `<div class="tile tile-md drawn suit-${t.suit} ${isGold ? 'gold' : ''}" onclick="onClickYourTile(${idx})">${keyToText(k)}</div>`;
   }
   
-  document.getElementById('yourHand').innerHTML = handHTML;
+  const handElement = document.getElementById('yourHand');
+  handElement.innerHTML = handHTML;
+  
+  // 如果有摸到的牌，自動滾動到最右側顯示
+  if (hasDrawn && drawnObj) {
+    requestAnimationFrame(() => {
+      handElement.scrollLeft = handElement.scrollWidth;
+    });
+  }
   
   // 我的副露
   let meldsHTML = '';
