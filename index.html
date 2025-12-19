@@ -344,14 +344,9 @@ body {
 
 /* 摸到的牌 */
 .tile.drawn {
-  border: 2px solid var(--accent-gold);
-  box-shadow: 0 0 16px var(--glow-gold), 0 4px 8px rgba(0,0,0,0.2);
-  animation: glow-pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes glow-pulse {
-  0%, 100% { box-shadow: 0 0 16px var(--glow-gold), 0 4px 8px rgba(0,0,0,0.2); }
-  50% { box-shadow: 0 0 24px var(--glow-gold), 0 4px 12px rgba(0,0,0,0.25); }
+  border: 3px solid var(--accent-gold);
+  background: linear-gradient(180deg, #fff9e6 0%, #ffffff 100%);
+  box-shadow: 0 2px 8px rgba(240,193,75,0.5);
 }
 
 /* ===== 戰況面板 ===== */
@@ -706,7 +701,7 @@ body {
   transform: scale(0.98);
 }
 
-/* ===== 特效 ===== */
+/* ===== 高級特效 ===== */
 .effect-overlay {
   position: fixed;
   inset: 0;
@@ -715,19 +710,121 @@ body {
   justify-content: center;
   pointer-events: none;
   z-index: 300;
+  perspective: 1000px;
 }
 
 .effect-text {
   font-size: 48px;
   font-weight: 900;
-  text-shadow: 0 0 30px currentColor, 0 0 60px currentColor;
-  animation: effect-pop 1s ease-out forwards;
+  text-shadow: 
+    0 0 20px currentColor,
+    0 0 40px currentColor,
+    0 0 60px currentColor,
+    0 0 80px currentColor;
+  animation: effect-pop-advanced 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  filter: drop-shadow(0 0 20px currentColor);
+  transform-style: preserve-3d;
 }
 
-@keyframes effect-pop {
-  0% { transform: scale(0.5); opacity: 0; }
-  50% { transform: scale(1.2); opacity: 1; }
-  100% { transform: scale(1); opacity: 0; }
+@keyframes effect-pop-advanced {
+  0% { 
+    transform: scale(0.2) rotateY(-180deg) rotateX(20deg) translateZ(-150px);
+    opacity: 0;
+    filter: blur(15px) brightness(2);
+  }
+  25% {
+    transform: scale(1.4) rotateY(10deg) rotateX(-5deg) translateZ(30px);
+    opacity: 1;
+    filter: blur(2px) brightness(1.5);
+  }
+  40% {
+    transform: scale(1.15) rotateY(-5deg) rotateX(2deg) translateZ(15px);
+    opacity: 1;
+    filter: blur(0px) brightness(1.2);
+  }
+  60% {
+    transform: scale(1.05) rotateY(2deg) rotateX(0deg) translateZ(0);
+    opacity: 1;
+    filter: blur(0px) brightness(1);
+  }
+  80% {
+    transform: scale(0.95) rotateY(0deg) rotateX(0deg) translateZ(-20px);
+    opacity: 0.8;
+    filter: blur(2px) brightness(0.9);
+  }
+  100% { 
+    transform: scale(0.7) rotateY(0deg) rotateX(10deg) translateZ(-80px);
+    opacity: 0;
+    filter: blur(8px) brightness(0.7);
+  }
+}
+
+/* 粒子效果 */
+.effect-particles {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.particle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+  border-radius: 50%;
+  animation: particle-float 1.5s ease-out forwards;
+  box-shadow: 
+    0 0 8px currentColor,
+    0 0 16px currentColor,
+    0 0 24px currentColor;
+  transform: translate(-50%, -50%);
+}
+
+@keyframes particle-float {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--tx, 0), var(--ty, -100px)) scale(0);
+    opacity: 0;
+  }
+}
+
+/* 光暈效果 */
+.effect-glow {
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(circle, currentColor 0%, transparent 70%);
+  opacity: 0.6;
+  animation: glow-pulse 1.2s ease-out forwards;
+  filter: blur(20px);
+}
+
+@keyframes glow-pulse {
+  0% {
+    transform: scale(0.3) rotate(0deg);
+    opacity: 0;
+    filter: blur(15px);
+  }
+  30% {
+    transform: scale(1.2) rotate(180deg);
+    opacity: 0.9;
+    filter: blur(10px);
+  }
+  60% {
+    transform: scale(1.8) rotate(360deg);
+    opacity: 0.6;
+    filter: blur(15px);
+  }
+  100% {
+    transform: scale(2.5) rotate(540deg);
+    opacity: 0;
+    filter: blur(25px);
+  }
 }
 
 /* ===== 響應式調整 ===== */
@@ -1105,7 +1202,7 @@ body {
 const rng = (n) => Math.floor(Math.random() * n);
 const clone = (o) => JSON.parse(JSON.stringify(o));
 
-// 音效系統
+// 高級音效系統
 let audioCtx = null;
 let soundEnabled = true;
 let audioInitialized = false;
@@ -1122,7 +1219,37 @@ function initAudio() {
   }
 }
 
-function playSound(freq, duration, type = 'sine') {
+// 高級音效：和弦音效
+function playChord(frequencies, duration, type = 'sine', volume = 0.15) {
+  if (!soundEnabled) return;
+  if (!audioInitialized) initAudio();
+  if (!audioCtx) return;
+  try {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const masterGain = audioCtx.createGain();
+    masterGain.connect(audioCtx.destination);
+    masterGain.gain.setValueAtTime(volume, audioCtx.currentTime);
+    masterGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    
+    frequencies.forEach((freq, idx) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(masterGain);
+      osc.frequency.value = freq;
+      osc.type = type;
+      const delay = idx * 0.02;
+      gain.gain.setValueAtTime(0, audioCtx.currentTime + delay);
+      gain.gain.linearRampToValueAtTime(volume / frequencies.length, audioCtx.currentTime + delay + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + delay + duration);
+      osc.start(audioCtx.currentTime + delay);
+      osc.stop(audioCtx.currentTime + delay + duration);
+    });
+  } catch (e) {}
+}
+
+// 高級音效：帶包絡的音效
+function playSound(freq, duration, type = 'sine', volume = 0.2, attack = 0.05, decay = 0.1) {
   if (!soundEnabled) return;
   if (!audioInitialized) initAudio();
   if (!audioCtx) return;
@@ -1130,29 +1257,97 @@ function playSound(freq, duration, type = 'sine') {
     if (audioCtx.state === 'suspended') audioCtx.resume();
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-    osc.connect(gain);
+    const filter = audioCtx.createBiquadFilter();
+    
+    osc.connect(filter);
+    filter.connect(gain);
     gain.connect(audioCtx.destination);
+    
     osc.frequency.value = freq;
     osc.type = type;
-    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
-    osc.start(audioCtx.currentTime);
-    osc.stop(audioCtx.currentTime + duration);
+    
+    // 高級包絡：Attack -> Decay -> Sustain -> Release
+    const now = audioCtx.currentTime;
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(volume, now + attack);
+    gain.gain.linearRampToValueAtTime(volume * 0.7, now + attack + decay);
+    gain.gain.linearRampToValueAtTime(volume * 0.7, now + duration - 0.1);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+    
+    // 添加低通濾波器讓音效更柔和
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(2000, now);
+    filter.Q.setValueAtTime(1, now);
+    
+    osc.start(now);
+    osc.stop(now + duration);
   } catch (e) {}
 }
 
+// 音效庫
+const SoundEffects = {
+  discard: () => playSound(400, 0.15, 'square', 0.15, 0.02, 0.05),
+  draw: () => playSound(600, 0.2, 'sine', 0.18, 0.05, 0.08),
+  chow: () => playChord([523, 659, 784], 0.3, 'triangle', 0.2), // C-E-G和弦
+  pong: () => playChord([440, 554, 659], 0.35, 'square', 0.22), // A-C#-E和弦
+  kong: () => playChord([330, 440, 554, 659], 0.4, 'sawtooth', 0.25), // 四音和弦
+  win: () => {
+    // 勝利音效：上升音階
+    const notes = [523, 659, 784, 1047]; // C-E-G-C
+    notes.forEach((freq, i) => {
+      setTimeout(() => playSound(freq, 0.4, 'sine', 0.25, 0.05, 0.1), i * 150);
+    });
+  },
+  listen: () => playChord([440, 554], 0.25, 'sine', 0.18),
+  error: () => playSound(200, 0.2, 'sawtooth', 0.15, 0.01, 0.05)
+};
+
 function showEffect(text, color, size = '48px') {
+  const overlay = document.createElement('div');
+  overlay.className = 'effect-overlay';
+  
+  // 主文字效果
   const effect = document.createElement('div');
   effect.className = 'effect-text';
   effect.textContent = text;
   effect.style.color = color;
   effect.style.fontSize = size;
-  
-  const overlay = document.createElement('div');
-  overlay.className = 'effect-overlay';
   overlay.appendChild(effect);
+  
+  // 光暈效果
+  const glow = document.createElement('div');
+  glow.className = 'effect-glow';
+  glow.style.color = color;
+  glow.style.left = '50%';
+  glow.style.top = '50%';
+  glow.style.transform = 'translate(-50%, -50%)';
+  overlay.appendChild(glow);
+  
+  // 高級粒子效果
+  const particles = document.createElement('div');
+  particles.className = 'effect-particles';
+  const particleCount = 30;
+  for (let i = 0; i < particleCount; i++) {
+    const particle = document.createElement('div');
+    particle.className = 'particle';
+    particle.style.color = color;
+    const angle = (Math.PI * 2 * i) / particleCount;
+    const distance = 60 + Math.random() * 80;
+    const size = 4 + Math.random() * 4;
+    particle.style.width = `${size}px`;
+    particle.style.height = `${size}px`;
+    particle.style.left = '50%';
+    particle.style.top = '50%';
+    particle.style.setProperty('--tx', `${Math.cos(angle) * distance}px`);
+    particle.style.setProperty('--ty', `${Math.sin(angle) * distance - 30}px`);
+    particle.style.animationDelay = `${i * 0.02}s`;
+    particle.style.animationDuration = `${1.2 + Math.random() * 0.6}s`;
+    particles.appendChild(particle);
+  }
+  overlay.appendChild(particles);
+  
   document.body.appendChild(overlay);
-  setTimeout(() => overlay.remove(), 1000);
+  setTimeout(() => overlay.remove(), 1500);
 }
 
 function log(msg) {
@@ -1672,12 +1867,27 @@ function aiChooseDiscard(pid) {
   const visible = [];
   S.players.forEach(p => visible.push(...p.discards, ...p.flowers));
   
+  // 收集所有對手的聽牌狀態和可能的等牌
   const listeningPlayers = [];
+  const playerWaitKeys = {};
   for (let i = 0; i < 4; i++) {
-    if (i !== pid && S.players[i].declaredListen) {
-      listeningPlayers.push(i);
+    if (i !== pid) {
+      if (S.players[i].declaredListen) {
+        listeningPlayers.push(i);
+        playerWaitKeys[i] = S.players[i].waitKeys || [];
+      } else {
+        // 即使沒報聽，也檢查是否可能聽牌
+        const pl = S.players[i];
+        const waits = calcWaitingTiles(pl.hand, pl.melds);
+        if (waits.length > 0) {
+          playerWaitKeys[i] = waits;
+        }
+      }
     }
   }
+  
+  // 計算當前向聽數
+  const currentShanten = shantenAfterRemove(me.hand);
   
   let cands = me.hand.map(t => {
     const after = me.hand.filter(x => x !== t);
@@ -1686,17 +1896,31 @@ function aiChooseDiscard(pid) {
     let waitCount = 0;
     let maxWaitTiles = 0;
     
+    // 增強危險牌判斷：檢查所有對手可能的等牌
     let dangerLevel = 0;
-    if (listeningPlayers.length > 0) {
-      listeningPlayers.forEach(lp => {
-        if (canWinOn(lp, t)) {
-          dangerLevel += 1000;
-        }
-      });
-    }
-    
     const tileKey_t = tileKey(t);
-    const discardedSimilar = visible.filter(vt => {
+    
+    // 檢查已報聽的對手
+    listeningPlayers.forEach(lp => {
+      if (canWinOn(lp, t)) {
+        dangerLevel += 2000; // 已報聽且能胡，極度危險
+      } else if (playerWaitKeys[lp] && playerWaitKeys[lp].includes(tileKey_t)) {
+        dangerLevel += 800; // 已報聽且等這張牌
+      }
+    });
+    
+    // 檢查未報聽但可能聽牌的對手
+    Object.keys(playerWaitKeys).forEach(lp => {
+      if (!listeningPlayers.includes(parseInt(lp))) {
+        if (playerWaitKeys[lp].includes(tileKey_t)) {
+          dangerLevel += 300; // 可能聽牌且等這張牌
+        }
+      }
+    });
+    
+    // 檢查最近打出的牌（對手可能不要的牌）
+    const recentDiscards = visible.slice(-10); // 最近10張
+    const discardedSimilar = recentDiscards.filter(vt => {
       const vk = tileKey(vt);
       if (vk === tileKey_t) return true;
       if (t.suit === 'W' || t.suit === 'T' || t.suit === 'B') {
@@ -1708,10 +1932,12 @@ function aiChooseDiscard(pid) {
       return false;
     }).length;
     
+    // 如果最近有人打過類似牌，降低風險
     if (discardedSimilar > 0) {
-      risk *= 0.5;
+      risk *= Math.max(0.3, 1 - discardedSimilar * 0.15);
     }
     
+    // 如果丟這張牌後能聽牌，計算聽牌質量
     if (isListening(after, me.melds)) {
       const waits = calcWaitingTiles(after, me.melds);
       waitCount = waits.length;
@@ -1720,17 +1946,38 @@ function aiChooseDiscard(pid) {
         const used = visible.filter(vt => tileKey(vt) === wk).length;
         const remain = total - used;
         maxWaitTiles += remain;
+        
+        // 如果等牌是危險牌，降低聽牌價值
+        let waitDanger = 0;
+        listeningPlayers.forEach(lp => {
+          if (playerWaitKeys[lp] && playerWaitKeys[lp].includes(wk)) {
+            waitDanger += 200;
+          }
+        });
+        maxWaitTiles -= waitDanger * 0.1;
       });
     }
     
+    // 增強結構分析
     const m = countByKey(after);
     let pairs = 0, triples = 0, isolated = 0, sequences = 0;
+    let usefulPairs = 0; // 有用的對子（可以組成刻子或順子）
     const keys = Object.keys(m);
     
     keys.forEach(k => {
       const c = m[k];
       if (c >= 3) triples++;
-      else if (c === 2) pairs++;
+      else if (c === 2) {
+        pairs++;
+        const tile = keyToTile(k);
+        // 檢查對子是否有用（可以組成刻子或順子）
+        if (tile.suit === 'W' || tile.suit === 'T' || tile.suit === 'B') {
+          const rank = tile.rank;
+          const hasLeft = m[`${tile.suit}${rank-1}`] || m[`${tile.suit}${rank-2}`];
+          const hasRight = m[`${tile.suit}${rank+1}`] || m[`${tile.suit}${rank+2}`];
+          if (hasLeft || hasRight) usefulPairs++;
+        }
+      }
       else if (c === 1) {
         const tile = keyToTile(k);
         if (tile.suit === 'W' || tile.suit === 'T' || tile.suit === 'B') {
@@ -1745,12 +1992,43 @@ function aiChooseDiscard(pid) {
       }
     });
     
-    const structureScore = (triples * 80) + (sequences * 60) + (pairs * 20) - (isolated * 40);
-    const score = (waitCount * 500) + (maxWaitTiles * 50) - (sh * 30) - (risk * 5) - dangerLevel + structureScore;
-    return { tile: t, score };
+    // 向聽數改善獎勵
+    const shantenImprovement = currentShanten - sh;
+    const shantenBonus = shantenImprovement * 100;
+    
+    // 結構評分增強
+    const structureScore = (triples * 100) + (sequences * 70) + (pairs * 25) + (usefulPairs * 15) - (isolated * 50);
+    
+    // 如果接近聽牌，優先考慮聽牌質量
+    let listeningBonus = 0;
+    if (sh <= 1) {
+      listeningBonus = (waitCount * 600) + (maxWaitTiles * 60);
+    } else {
+      listeningBonus = (waitCount * 500) + (maxWaitTiles * 50);
+    }
+    
+    // 如果已經聽牌，優先保持聽牌狀態
+    if (currentShanten === 0 && sh === 0) {
+      listeningBonus *= 1.5;
+    }
+    
+    const score = listeningBonus + shantenBonus - (sh * 35) - (risk * 8) - dangerLevel + structureScore;
+    return { tile: t, score, sh, waitCount };
   });
   
-  cands.sort((a, b) => b.score - a.score);
+  cands.sort((a, b) => {
+    // 優先考慮分數
+    if (Math.abs(a.score - b.score) > 50) {
+      return b.score - a.score;
+    }
+    // 分數相近時，優先選擇向聽數更小的
+    if (a.sh !== b.sh) {
+      return a.sh - b.sh;
+    }
+    // 向聽數相同時，優先選擇聽牌數更多的
+    return b.waitCount - a.waitCount;
+  });
+  
   return cands[0].tile;
 }
 
@@ -1827,7 +2105,7 @@ function doChow(pid, tile, pattern) {
   S.anyOpenMeld = true;
   log(`🍜 ${playerName(pid)} 吃了 ${tiles.map(t => keyToText(tileKey(t))).join(' ')}`);
   showEffect('🍜 吃', '#22c55e');
-  playSound(500, 0.2, 'triangle');
+  SoundEffects.chow();
   
   S.turn = pid;
   S.lastDiscard = null;
@@ -1900,7 +2178,7 @@ function doConcealedKong(pid, key) {
     log(`💥 ${playerName(pid)} 暗槓`);
   }
   showEffect('💥 暗槓', '#a855f7');
-  playSound(700, 0.3, 'sawtooth');
+  SoundEffects.kong();
   
   if (S.deadWall.length > 0) {
     const newTile = S.deadWall.pop();
@@ -1965,7 +2243,7 @@ function doAddedKong(pid, meldIndex) {
   S.kongCount++;
   log(`💥 ${playerName(pid)} 加槓 ${keyToText(key)}`);
   showEffect('💥 槓', '#f97316');
-  playSound(650, 0.3, 'sawtooth');
+  SoundEffects.kong();
   
   if (S.deadWall.length > 0) {
     const newTile = S.deadWall.pop();
@@ -2013,7 +2291,7 @@ function doPong(pid, tile) {
   S.anyOpenMeld = true;
   log(`🔥 ${playerName(pid)} 碰了 ${keyToText(k)}`);
   showEffect('🔥 碰', '#f0c14b');
-  playSound(550, 0.25, 'square');
+  SoundEffects.pong();
   S.turn = pid;
   S.lastDiscard = null;
   S.waitReact = null;
@@ -2036,7 +2314,7 @@ function doKong(pid, tile) {
   S.kongCount++;
   log(`💥 ${playerName(pid)} 槓了 ${keyToText(k)}，從王牌補牌`);
   showEffect('💥 槓', '#f97316');
-  playSound(650, 0.3, 'sawtooth');
+  SoundEffects.kong();
   
   if (S.deadWall.length > 0) {
     const newTile = S.deadWall.pop();
@@ -2085,7 +2363,7 @@ function discard(p, tile) {
   S.players[p].drawnTile = null;
   S.players[p].discards.push(tile);
   S.lastDiscard = { tile, from: p };
-  playSound(400, 0.1, 'square');
+  SoundEffects.discard();
   
   S.lastAction = 'discard';
   S.lastActor = p;
@@ -2157,7 +2435,13 @@ function discard(p, tile) {
       setTimeout(() => handleAIReaction(reactions), 1000 + Math.random() * 1000);
     }
   } else {
-    S.turn = getNextTurn(S.turn);
+    // 使用丟牌玩家p來計算下一個回合，而不是S.turn
+    const nextTurn = getNextTurn(p);
+    S.turn = nextTurn;
+    S.lastDiscard = null; // 清除lastDiscard，因為沒有反應
+    S.waitReact = null; // 清除waitReact
+    log(`🔄 回合切換：${playerName(p)} -> ${playerName(nextTurn)}`);
+    renderAll(); // 先更新UI顯示回合變化
     stepNext();
   }
 }
@@ -2314,11 +2598,15 @@ function showListenPanel() {
       const waitText = waitKeys.map(k => keyToText(k)).join(' ');
       if (me.tianTing) {
         log('🔔 你宣告天聽！胡牌時多 ' + RULES.scoring.HeavenReady + ' 台');
+        showEffect('🔔 天聽', '#f0c14b', '52px');
       } else if (me.diTing) {
         log('🔔 你宣告地聽！胡牌時多 ' + RULES.scoring.EarthReady + ' 台');
+        showEffect('🔔 地聽', '#2dd4bf', '48px');
       } else {
         log('🔔 你宣告聽牌！胡牌時多 1 台');
+        showEffect('🔔 聽牌', '#2dd4bf', '44px');
       }
+      SoundEffects.listen();
       log('⚠️ 請丟一張手牌後鎖定聽牌');
       if (waitKeys.length > 0) {
         me.waitKeys = waitKeys.slice();
@@ -2351,20 +2639,47 @@ function handleAIReaction(reactions) {
     return true;
   });
   
+  // 增強槓的反應判斷
   const kongReact = reactions.find(r => r.type === 'kong');
-  if (kongReact && Math.random() > 0.2) {
-    doKong(kongReact.pid, kongReact.tile);
-    setTimeout(stepAI, 1000 + Math.random() * 1000);
-    return;
+  if (kongReact) {
+    const me = S.players[kongReact.pid];
+    const currentShanten = shantenAfterRemove(me.hand);
+    // 如果向聽數較大，更傾向於槓
+    let kongChance = currentShanten >= 3 ? 0.5 : (currentShanten >= 2 ? 0.35 : 0.2);
+    // 如果已經聽牌，降低槓的機率（避免破壞聽牌）
+    if (currentShanten === 0) {
+      kongChance = 0.15;
+    }
+    if (Math.random() < kongChance) {
+      doKong(kongReact.pid, kongReact.tile);
+      setTimeout(stepAI, 1000 + Math.random() * 1000);
+      return;
+    }
   }
   
+  // 增強碰的反應判斷
   const pongReact = reactions.find(r => r.type === 'pong');
-  if (pongReact && Math.random() > 0.3) {
-    doPong(pongReact.pid, pongReact.tile);
-    setTimeout(stepAI, 1000 + Math.random() * 1000);
-    return;
+  if (pongReact) {
+    const me = S.players[pongReact.pid];
+    const currentShanten = shantenAfterRemove(me.hand);
+    // 根據向聽數決定碰的機率
+    let pongChance = currentShanten >= 3 ? 0.5 : (currentShanten >= 2 ? 0.4 : 0.25);
+    // 如果已經聽牌，降低碰的機率
+    if (currentShanten === 0) {
+      pongChance = 0.2;
+    }
+    // 如果已經報聽，只能碰或胡
+    if (me.declaredListen) {
+      pongChance = 0.3;
+    }
+    if (Math.random() < pongChance) {
+      doPong(pongReact.pid, pongReact.tile);
+      setTimeout(stepAI, 1000 + Math.random() * 1000);
+      return;
+    }
   }
   
+  // 增強吃的反應判斷
   const chowReact = reactions.find(r => r.type === 'chow');
   if (chowReact) {
     const me = S.players[chowReact.pid];
@@ -2386,7 +2701,18 @@ function handleAIReaction(reactions) {
     const shBefore = shantenAfterRemove(me.hand);
     const shAfter = shantenAfterRemove(afterChow);
     
-    if (shAfter <= shBefore && Math.random() > 0.4) {
+    // 如果吃能改善向聽數，更傾向於吃
+    if (shAfter < shBefore) {
+      const improvement = shBefore - shAfter;
+      let chowChance = 0.3 + (improvement * 0.25); // 改善越多，機率越高
+      if (shAfter === 0) chowChance += 0.2; // 如果能聽牌，提高機率
+      if (Math.random() < chowChance) {
+        doChow(chowReact.pid, chowReact.tile, pattern);
+        setTimeout(stepAI, 1000 + Math.random() * 1000);
+        return;
+      }
+    } else if (shAfter === shBefore && Math.random() < 0.25) {
+      // 即使不改善向聽數，也有小機率吃（為了改變牌型）
       doChow(chowReact.pid, chowReact.tile, pattern);
       setTimeout(stepAI, 1000 + Math.random() * 1000);
       return;
@@ -2410,9 +2736,8 @@ function doWin(winner, from, tile, selfDraw) {
   S.fromPlayer = from;
   S.winTile = tile;
   S.phase = 'end';
-  showEffect('🎉 胡了！', '#f0c14b', '56px');
-  playSound(800, 0.5, 'sine');
-  setTimeout(() => playSound(1000, 0.5, 'sine'), 200);
+  showEffect('🎉 胡了！', '#f0c14b', '64px');
+  SoundEffects.win();
   
   const detail = calcFanDetails(winner, tile, selfDraw);
   const fan = detail.fan;
@@ -2846,7 +3171,8 @@ function stepNext() {
   if (S.phase === 'end') return;
   
   const dead = 16 + S.kongCount;
-  if (S.wall.length <= 0) {
+  // 流局：牌山和王牌都為空
+  if (S.wall.length === 0 && S.deadWall.length === 0) {
     log('🚫 流局 - 牌山枯竭');
     S.phase = 'end';
     S.winner = null;
@@ -2855,14 +3181,45 @@ function stepNext() {
     return;
   }
   
+  // 確保S.turn是有效的值（0-3）
+  if (S.turn === undefined || S.turn === null || S.turn < 0 || S.turn > 3) {
+    log('⚠️ 回合數錯誤，重置為0');
+    S.turn = 0;
+  }
+  
   if (S.turn === 0) {
-    draw(0);
-    renderAll();
+    // 玩家0的回合，先摸牌
     const me = S.players[0];
-    const t = me.hand[me.hand.length - 1];
-    if (isWinningNow(me.hand, me.melds, t)) {
-      document.getElementById('btnHu').disabled = false;
-      log('✨ 你可以自摸（按「胡牌」）或繼續出牌');
+    const hadDrawnTile = me.drawnTile; // 記錄之前是否有摸到的牌
+    
+    draw(0);
+    
+    // 檢查是否成功摸牌
+    if (!me.drawnTile && !hadDrawnTile) {
+      // 摸牌失敗，可能是流局
+      if (S.wall.length === 0 && S.deadWall.length === 0) {
+        log('🚫 流局 - 牌山枯竭');
+        S.phase = 'end';
+        S.winner = null;
+        renderAll();
+        setTimeout(() => showHandsAndContinue(), 1000);
+        return;
+      }
+      // 如果還有牌但摸牌失敗，記錄錯誤
+      log('⚠️ 摸牌失敗，但還有牌');
+      renderAll();
+      return;
+    }
+    
+    renderAll();
+    
+    // 確保有手牌才能檢查胡牌
+    if (me.hand.length > 0 && me.drawnTile) {
+      const t = me.drawnTile;
+      if (isWinningNow(me.hand, me.melds, t)) {
+        document.getElementById('btnHu').disabled = false;
+        log('✨ 你可以自摸（按「胡牌」）或繼續出牌');
+      }
     }
   } else {
     setTimeout(stepAI, 800 + Math.random() * 800);
@@ -2878,7 +3235,23 @@ function stepAI() {
   
   if (S.lastAction === 'discard' || S.lastAction === null) {
     draw(pid);
+    // 如果摸牌失敗（沒有牌了），檢查是否流局
+    if (pl.hand.length === 0 || !pl.drawnTile) {
+      if (S.wall.length === 0 && S.deadWall.length === 0) {
+        log('🚫 流局 - 牌山枯竭');
+        S.phase = 'end';
+        S.winner = null;
+        renderAll();
+        setTimeout(() => showHandsAndContinue(), 1000);
+        return;
+      }
+      // 如果摸牌失敗但還有牌，可能是邏輯錯誤，直接返回避免卡住
+      return;
+    }
   }
+  
+  // 確保有手牌才能繼續
+  if (pl.hand.length === 0) return;
   
   const t = pl.hand[pl.hand.length - 1];
   if (isWinningNow(pl.hand, pl.melds, t)) {
@@ -2886,24 +3259,80 @@ function stepAI() {
     return;
   }
   
+  // 增強暗槓判斷：考慮手牌狀況
   const cks = canConcealedKong(pid);
-  if (cks.length > 0 && Math.random() > 0.3) {
-    doConcealedKong(pid, cks[0]);
-    return;
+  if (cks.length > 0) {
+    const currentShanten = shantenAfterRemove(pl.hand);
+    // 如果向聽數較大，更傾向於暗槓
+    let kongChance = currentShanten >= 3 ? 0.6 : (currentShanten >= 2 ? 0.45 : 0.3);
+    // 如果已經聽牌，降低暗槓機率（除非能改善聽牌）
+    if (currentShanten === 0) {
+      kongChance = 0.2;
+    }
+    if (Math.random() < kongChance) {
+      doConcealedKong(pid, cks[0]);
+      return;
+    }
   }
   
+  // 增強加槓判斷
   const aks = canAddedKong(pid);
-  if (aks.length > 0 && Math.random() > 0.4) {
-    const candidate = aks[0];
-    // 搶槓檢查已經在doAddedKong內部進行，這裡直接調用
-    doAddedKong(pid, candidate.meldIndex);
-    return;
+  if (aks.length > 0) {
+    const currentShanten = shantenAfterRemove(pl.hand);
+    // 如果向聽數較大，更傾向於加槓
+    let kongChance = currentShanten >= 3 ? 0.55 : (currentShanten >= 2 ? 0.45 : 0.35);
+    // 如果已經聽牌，降低加槓機率（避免被搶槓）
+    if (currentShanten === 0) {
+      // 檢查是否有對手聽牌
+      let hasListeningOpponent = false;
+      for (let i = 0; i < 4; i++) {
+        if (i !== pid && S.players[i].declaredListen) {
+          hasListeningOpponent = true;
+          break;
+        }
+      }
+      kongChance = hasListeningOpponent ? 0.15 : 0.3;
+    }
+    if (Math.random() < kongChance) {
+      const candidate = aks[0];
+      // 搶槓檢查已經在doAddedKong內部進行，這裡直接調用
+      doAddedKong(pid, candidate.meldIndex);
+      return;
+    }
   }
   
-  if (!pl.declaredListen && isListening(pl.hand, pl.melds) && Math.random() > 0.5) {
-    pl.declaredListen = true;
-    updateTianDiTing(pid);
-    log(`🔔 ${playerName(pid)} 報聽`);
+  // 增強報聽判斷
+  if (!pl.declaredListen && isListening(pl.hand, pl.melds)) {
+    const waits = calcWaitingTiles(pl.hand, pl.melds);
+    const visible = [];
+    S.players.forEach(p => visible.push(...p.discards, ...p.flowers));
+    
+    // 計算等牌的剩餘數量
+    let totalRemain = 0;
+    waits.forEach(wk => {
+      const used = visible.filter(vt => tileKey(vt) === wk).length;
+      totalRemain += (4 - used);
+    });
+    
+    // 根據等牌數量和剩餘牌數決定報聽機率
+    let listenChance = 0.4; // 基礎機率
+    if (waits.length >= 4) listenChance = 0.7; // 等牌多，更傾向報聽
+    else if (waits.length >= 2) listenChance = 0.55;
+    
+    if (totalRemain >= 8) listenChance += 0.15; // 剩餘牌多，更傾向報聽
+    else if (totalRemain <= 4) listenChance -= 0.2; // 剩餘牌少，降低報聽機率
+    
+    // 如果向聽數為0（已經聽牌），提高報聽機率
+    const currentShanten = shantenAfterRemove(pl.hand);
+    if (currentShanten === 0) {
+      listenChance = Math.min(0.9, listenChance + 0.3);
+    }
+    
+    if (Math.random() < listenChance) {
+      pl.declaredListen = true;
+      updateTianDiTing(pid);
+      log(`🔔 ${playerName(pid)} 報聽`);
+    }
   }
   
   const discardTile = aiChooseDiscard(pid);
@@ -2911,14 +3340,27 @@ function stepAI() {
 }
 
 function draw(p) {
-  if (S.wall.length === 0) return;
-  const t = S.wall.pop();
+  let t = null;
+  
+  // 優先從牌山摸牌
+  if (S.wall.length > 0) {
+    t = S.wall.pop();
+  } 
+  // 如果牌山為空，從王牌摸牌
+  else if (S.deadWall.length > 0) {
+    t = S.deadWall.pop();
+  } 
+  // 如果都沒有牌了，無法摸牌
+  else {
+    return;
+  }
+  
   S.players[p].hand.push(t);
   S.players[p].drawnTile = t;
   S.players[p].drawCount = (S.players[p].drawCount || 0) + 1;
-  S.remain = S.wall.length;
+  S.remain = S.wall.length + S.deadWall.length;
   S.drawCount++;
-  playSound(600, 0.1, 'sine');
+  SoundEffects.draw();
   
   if (p === 0) {
     const k = tileKey(t);
@@ -2934,7 +3376,7 @@ function renderAll() {
   // 更新回合資訊
   const roundStr = ['東','南','西','北'][S.round - 1] + '風' + (seatNames?.[S.dealer] || ['東','南','西','北'][S.dealer]);
   document.getElementById('centerRound').textContent = roundStr;
-  document.getElementById('centerRemain').textContent = Math.max(0, S.wall.length);
+  document.getElementById('centerRemain').textContent = Math.max(0, S.remain || (S.wall.length + S.deadWall.length));
   
   // 金牌顯示
   const goldDisplay = document.getElementById('goldDisplay');
@@ -3034,19 +3476,39 @@ function renderAll() {
   
   // 我的手牌
   const kongCount = countKongs(me);
-  // 莊家：17 + kongCount，非莊家：16 + kongCount
-  const expectedFull = (S.dealer === 0 ? 17 : 16) + kongCount;
-  const hasDrawn = (me.hand.length + me.melds.reduce((sum, m) => sum + m.tiles.length, 0)) === expectedFull;
-  
   const origTiles = me.hand.map((t, idx) => ({ tile: t, index: idx }));
-  let displayRest = [];
-  let drawnObj = null;
   
-  if (hasDrawn && me.hand.length > 0) {
-    drawnObj = origTiles[origTiles.length - 1];
-    const rest = origTiles.slice(0, -1);
-    displayRest = rest.sort((a, b) => tileSortKey(a.tile) - tileSortKey(b.tile));
-  } else {
+  // 檢查是否有摸到的牌
+  // 摸到的牌應該是最後一張（因為draw函數使用push），或者通過drawnTile標記找到
+  let drawnObj = null;
+  let displayRest = [];
+  
+  if (me.drawnTile) {
+    // 先嘗試通過drawnTile找到
+    const drawnIndex = me.hand.findIndex(t => {
+      // 使用對象引用比較，如果失敗則使用屬性比較
+      if (t === me.drawnTile) return true;
+      // 備用：比較屬性
+      if (t && me.drawnTile && t.suit === me.drawnTile.suit && t.rank === me.drawnTile.rank) return true;
+      return false;
+    });
+    
+    if (drawnIndex >= 0) {
+      drawnObj = origTiles[drawnIndex];
+      // 其他牌排序顯示
+      displayRest = origTiles.filter((_, idx) => idx !== drawnIndex)
+        .sort((a, b) => tileSortKey(a.tile) - tileSortKey(b.tile));
+    } else if (me.hand.length > 0) {
+      // 如果找不到，使用最後一張牌（因為draw使用push）
+      const lastIdx = me.hand.length - 1;
+      drawnObj = origTiles[lastIdx];
+      displayRest = origTiles.slice(0, -1)
+        .sort((a, b) => tileSortKey(a.tile) - tileSortKey(b.tile));
+    }
+  }
+  
+  // 如果沒有摸到的牌，所有牌都排序顯示
+  if (!drawnObj) {
     displayRest = origTiles.slice().sort((a, b) => tileSortKey(a.tile) - tileSortKey(b.tile));
   }
   
@@ -3060,8 +3522,8 @@ function renderAll() {
     handHTML += `<div class="tile tile-md suit-${t.suit} ${isGold ? 'gold' : ''}" onclick="onClickYourTile(${idx})">${keyToText(k)}</div>`;
   });
   
-  // 摸到的牌顯示在最右側
-  if (hasDrawn && drawnObj) {
+  // 摸到的牌始終顯示在最右側
+  if (drawnObj) {
     const t = drawnObj.tile;
     const idx = drawnObj.index;
     const k = tileKey(t);
@@ -3074,7 +3536,7 @@ function renderAll() {
   handElement.innerHTML = handHTML;
   
   // 如果有摸到的牌，自動滾動到最右側顯示
-  if (hasDrawn && drawnObj) {
+  if (drawnObj) {
     requestAnimationFrame(() => {
       handElement.scrollLeft = handElement.scrollWidth;
     });
@@ -3116,6 +3578,7 @@ function renderAll() {
   btnHu.disabled = true;
   if (S.turn === 0 && S.phase !== 'end') {
     const total = me.hand.length + me.melds.reduce((sum, m) => sum + m.tiles.length, 0);
+    const expectedFull = (S.dealer === 0 ? 17 : 16) + kongCount;
     if (total === expectedFull && me.hand.length > 0) {
       const lastTile = me.hand[me.hand.length - 1];
       if (isWinningNow(me.hand, me.melds, lastTile)) {
@@ -3128,17 +3591,20 @@ function renderAll() {
   let canListenBtn = false;
   if (me.declaredListen) {
     canListenBtn = false;
-  } else if (S.turn === 0 && S.phase !== 'end') {
+  } else if (S.turn === 0 && S.phase !== 'end' && S.waitReact === null) {
     const totalTilesMe = me.hand.length + me.melds.reduce((sum, m) => sum + m.tiles.length, 0);
+    const expectedFull = (S.dealer === 0 ? 17 : 16) + kongCount;
     const expectedEmpty = (S.dealer === 0 ? 16 : 15) + kongCount;
+    
+    // 如果手牌是滿的（剛摸到牌），檢查丟掉一張後是否能聽牌
     if (totalTilesMe === expectedFull) {
-      const canListenAfterDiscard = me.hand.some(tile => {
+      canListenBtn = me.hand.some(tile => {
         const testHand = me.hand.filter(t => t !== tile);
         return isListening(testHand, me.melds);
       });
-      if (canListenAfterDiscard) canListenBtn = true;
     }
-    if (totalTilesMe === expectedEmpty) {
+    // 如果手牌是空的（已經丟過牌），檢查當前是否已經聽牌
+    else if (totalTilesMe === expectedEmpty) {
       canListenBtn = isListening(me.hand, me.melds);
     }
   }
@@ -3319,6 +3785,8 @@ document.getElementById('btnListen').onclick = () => {
   log('🔔 你報聽了！');
   log('👂 等牌：' + waitText);
   log('⚠️ 請選擇一張手牌打出以完成聽牌');
+  SoundEffects.listen();
+  showEffect('🔔 聽牌', '#2dd4bf', '44px');
   renderAll();
 };
 
@@ -3393,13 +3861,10 @@ function onClickYourTile(idx) {
         return;
       }
     } else {
-      const kongCount = countKongs(me);
-      const expectedFull = (S.dealer === 0 ? 17 : 16) + kongCount;
-      const totalTiles = me.hand.length + me.melds.reduce((sum, m) => sum + m.tiles.length, 0);
-      const hasDrawn = (totalTiles === expectedFull);
-      if (hasDrawn) {
-        const lastIdx = me.hand.length - 1;
-        if (idx !== lastIdx) {
+      // 如果剛摸到牌，只能打摸到的牌
+      if (me.drawnTile && me.hand.includes(me.drawnTile)) {
+        const drawnIdx = me.hand.findIndex(t => t === me.drawnTile);
+        if (idx !== drawnIdx) {
           log('⚠️ 已鎖定聽牌，只能打剛摸的牌');
           return;
         }
