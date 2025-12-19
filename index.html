@@ -303,12 +303,14 @@ body {
 
 .tile-md {
   min-width: 36px;
+  width: 36px;
   height: 48px;
   font-size: 16px;
   padding: 4px;
   cursor: pointer;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
 }
 
 .tile-md:hover {
@@ -453,13 +455,31 @@ body {
 
 .hand-tiles {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 3px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   margin-bottom: 8px;
   padding: 4px 0;
   min-height: 56px;
   align-items: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.2) transparent;
+}
+
+.hand-tiles::-webkit-scrollbar {
+  height: 4px;
+}
+
+.hand-tiles::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.hand-tiles::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.2);
+  border-radius: 2px;
 }
 
 .my-melds {
@@ -947,6 +967,9 @@ body {
   .hand-tiles {
     margin-bottom: 6px;
     min-height: 50px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    justify-content: flex-start;
   }
   
   .controls-bar {
@@ -1285,7 +1308,8 @@ let S = null;
 let seatNames = ['東','南','西','北'];
 
 function getNextTurn(currentTurn) {
-  const clockwiseOrder = [0, 3, 1, 2];
+  // 順時針順序：0(東) -> 1(南) -> 2(西) -> 3(北) -> 0
+  const clockwiseOrder = [0, 1, 2, 3];
   const currentIndex = clockwiseOrder.indexOf(currentTurn);
   return clockwiseOrder[(currentIndex + 1) % 4];
 }
@@ -1310,7 +1334,8 @@ function startNewHand(isFirstGame = false) {
     const diceSum = dice1 + dice2;
     newDealer = (diceSum - 1) % 4;
     newRound = 1;
-    const clockwiseOrder = [0, 3, 1, 2];
+    // 順時針順序：0(東) -> 1(南) -> 2(西) -> 3(北) -> 0
+    const clockwiseOrder = [0, 1, 2, 3];
     seatNames = [];
     for (let offset = 0; offset < 4; offset++) {
       const dealerIndex = clockwiseOrder.indexOf(newDealer);
@@ -1332,7 +1357,8 @@ function startNewHand(isFirstGame = false) {
   } else if (S.winner === S.dealer) {
     log(`🏆 莊家胡牌，繼續當莊`);
   } else {
-    const clockwiseOrder = [0, 3, 1, 2];
+    // 順時針順序：0(東) -> 1(南) -> 2(西) -> 3(北) -> 0
+    const clockwiseOrder = [0, 1, 2, 3];
     const currentIndex = clockwiseOrder.indexOf(S.dealer);
     newDealer = clockwiseOrder[(currentIndex + 1) % 4];
     if (newDealer === S.initialDealer) {
@@ -1747,7 +1773,9 @@ function canChow(pid, tile) {
   const pl = S.players[pid];
   if (pl.melds.length >= 5) return [];
   
-  const clockwiseOrder = [0, 3, 1, 2];
+  // 順時針順序：0(東) -> 1(南) -> 2(西) -> 3(北) -> 0
+  // 吃只能吃上家的牌，上家是順時針的前一個
+  const clockwiseOrder = [0, 1, 2, 3];
   const currentIndex = clockwiseOrder.indexOf(S.turn);
   const nextPlayer = clockwiseOrder[(currentIndex + 1) % 4];
   if (pid !== nextPlayer) return [];
