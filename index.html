@@ -107,37 +107,6 @@ body {
   font-size: 16px;
 }
 
-/* ===== 金牌展示 ===== */
-.gold-display {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: linear-gradient(90deg, transparent, rgba(240,193,75,0.1), transparent);
-}
-
-.gold-label {
-  font-size: 11px;
-  color: var(--accent-gold);
-  font-weight: 600;
-}
-
-.gold-tiles {
-  display: flex;
-  gap: 6px;
-}
-
-.gold-tile {
-  background: linear-gradient(135deg, #ffd700 0%, #ffed4e 50%, #ffc107 100%);
-  color: var(--bg-primary);
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-weight: 800;
-  font-size: 14px;
-  box-shadow: 0 2px 8px rgba(255,215,0,0.4), inset 0 1px 0 rgba(255,255,255,0.5);
-  text-shadow: 0 1px 0 rgba(255,255,255,0.3);
-}
 
 /* ===== 對手區域 ===== */
 .opponents-area {
@@ -203,6 +172,19 @@ body {
   border-radius: 10px;
   font-size: 10px;
   font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.streak-mark {
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--bg-primary);
+  padding: 1px 4px;
+  border-radius: 6px;
+  font-size: 9px;
+  font-weight: 800;
+  margin-left: 2px;
 }
 
 .listen-mark {
@@ -335,12 +317,6 @@ body {
 .tile.suit-B { color: var(--tile-tiao); }
 .tile.suit-F, .tile.suit-D { color: var(--tile-zi); }
 
-/* 金牌 */
-.tile.gold {
-  background: linear-gradient(135deg, #ffd700 0%, #ffed4e 50%, #ffc107 100%);
-  border-color: #d4a03a;
-  box-shadow: 0 2px 12px rgba(255,215,0,0.5), inset 0 1px 0 rgba(255,255,255,0.6);
-}
 
 /* 摸到的牌 */
 .tile.drawn {
@@ -908,14 +884,6 @@ body {
     font-size: 18px;
   }
   
-  .gold-display {
-    padding: 6px 10px;
-  }
-  
-  .gold-tile {
-    padding: 3px 8px;
-    font-size: 12px;
-  }
 }
 
 @media (max-width: 480px) {
@@ -1124,11 +1092,6 @@ body {
   </button>
 </div>
 
-<!-- 金牌展示 -->
-<div class="gold-display" id="goldDisplay">
-  <span class="gold-label">✨ 金牌</span>
-  <div class="gold-tiles" id="goldTiles"></div>
-</div>
 
 <!-- 對手區域 -->
 <div class="opponents-area" id="opponentsArea">
@@ -1193,7 +1156,6 @@ body {
 <div id="goldbar" style="display: none;"></div>
 <div id="roundinfo" style="display: none;"></div>
 <div id="table" style="display: none;"></div>
-<input type="checkbox" id="goldSwitch" checked style="display: none;">
 <div id="reactionPanel" style="display: none;"></div>
 <div id="overlay" style="display: none;"></div>
 
@@ -1232,9 +1194,9 @@ function playChord(frequencies, duration, type = 'sine', volume = 0.15) {
     masterGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
     
     frequencies.forEach((freq, idx) => {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.connect(gain);
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
       gain.connect(masterGain);
       osc.frequency.value = freq;
       osc.type = type;
@@ -1362,7 +1324,7 @@ function log(msg) {
   
   // 確保滾動到底部（顯示最新內容）
   requestAnimationFrame(() => {
-    el.scrollTop = el.scrollHeight;
+  el.scrollTop = el.scrollHeight;
   });
 }
 
@@ -1446,7 +1408,6 @@ function shuffle(a) {
 /* ========= 遊戲規則與狀態 ========= */
 const RULES = {
   handSize: 16,
-  gold: { enabled: true, initial: 3, maxExtra: 2, totalMax: 5, perGold: 1, winOnGold: 3 },
   scoring: {
     // 基本台型
     SelfDraw: 1,              // 自摸
@@ -1517,7 +1478,7 @@ let randomNames = null;
 let dealerStreak = 0;
 
 function startNewHand(isFirstGame = false) {
-  const useGold = document.getElementById('goldSwitch').checked;
+  const useGold = false;
   
   let newDealer = S?.dealer ?? 0;
   let newRound = S?.round ?? 1;
@@ -1549,8 +1510,10 @@ function startNewHand(isFirstGame = false) {
     log(`🎲 擲骰：${dice1} + ${dice2} = ${diceSum}，莊家為${dealerNameInit}`);
   } else if (S.winner === null) {
     log(`🔁 流局連莊，莊家繼續當莊`);
+    newDealer = S.dealer; // 流局連莊，莊家不變
   } else if (S.winner === S.dealer) {
     log(`🏆 莊家胡牌，繼續當莊`);
+    newDealer = S.dealer; // 莊家胡牌，繼續當莊
   } else {
     // 順時針順序：0(東) -> 1(南) -> 2(西) -> 3(北) -> 0
     const clockwiseOrder = [0, 1, 2, 3];
@@ -1574,8 +1537,13 @@ function startNewHand(isFirstGame = false) {
     dealerStreak = 0;
   } else {
     if (newDealer === S.dealer) {
-      dealerStreak = (dealerStreak || 0) + 1;
+      // 莊家繼續當莊，連莊次數+1
+      dealerStreak = (S.dealerStreak || 0) + 1;
+      if (dealerStreak > 1) {
+        log(`🔄 連莊 ${dealerStreak} 次`);
+      }
     } else {
+      // 莊家輪替，重置連莊次數
       dealerStreak = 0;
     }
   }
@@ -1595,9 +1563,10 @@ function startNewHand(isFirstGame = false) {
       diTing: false,
       isAI: i !== 0,
       rinshan: false,
-      drawCount: 0
+      drawCount: 0,
+      tingLocked: false,
+      requiredDiscard: null
     })),
-    goldKeys: [],
     kongCount: 0,
     rules: clone(RULES),
     turn: newDealer,
@@ -1624,10 +1593,7 @@ function startNewHand(isFirstGame = false) {
     randomNames = prevNames;
   }
   S.names = randomNames ? randomNames.slice() : (prevNames ? prevNames.slice() : []);
-  S.rules.gold.enabled = useGold;
-
   dealTiles();
-  if (S.rules.gold.enabled) initGoldTiles();
   S.phase = 'play';
   S.remain = S.wall.length;
   renderAll();
@@ -1635,7 +1601,8 @@ function startNewHand(isFirstGame = false) {
   const dealerWind = seatNames?.[S.dealer] || ['東', '南', '西', '北'][S.dealer];
   const dealerName = dealerWind + '家' + (S.dealer === 0 ? '(你)' : '');
   const roundName = ['東', '南', '西', '北'][newRound - 1];
-  log(`🎮 第${newRound}圈 ${roundName}風，莊家：${dealerName}${S.rules.gold.enabled ? '，啟用金牌' : ''}`);
+  const streakText = dealerStreak > 0 ? `（連莊 ${dealerStreak} 次）` : '';
+  log(`🎮 第${newRound}圈 ${roundName}風，莊家：${dealerName}${streakText}`);
   
   if (S.dealer === 0) {
     log(`👉 莊家持有17張牌，請直接出牌`);
@@ -1661,18 +1628,6 @@ function dealTiles() {
   S.deadWall = S.wall.splice(-deadWallSize, deadWallSize);
 }
 
-function initGoldTiles() {
-  const candidates = [];
-  for (let r = 1; r <= 9; r++) {
-    candidates.push('W' + r, 'T' + r, 'B' + r);
-  }
-  WINDS.forEach(n => candidates.push('F' + n));
-  DRAGONS.forEach(n => candidates.push('D' + n));
-  while (S.goldKeys.length < 3) {
-    const k = candidates[rng(candidates.length)];
-    if (!S.goldKeys.includes(k)) S.goldKeys.push(k);
-  }
-}
 
 function playerName(i) {
   const name = (S && S.names && S.names[i]) ? S.names[i] : (seatNames?.[i] || ['東', '南', '西', '北'][i]);
@@ -1805,24 +1760,35 @@ function canStandardWin(tiles, need = 5) {
 
 function canSplitMelds(counts, need) {
   if (need === 0) return Object.values(counts).every(v => v === 0);
-  let first = null;
-  for (const k in counts) {
-    if (counts[k] > 0) {
-      first = k;
-      break;
-    }
-  }
-  if (!first) return need === 0;
   
+  // 获取所有有牌的key，并按顺序排序
+  const keys = Object.keys(counts).filter(k => counts[k] > 0);
+  if (keys.length === 0) return need === 0;
+  
+  // 按花色和数值排序，确保处理顺序一致
+  keys.sort((a, b) => {
+    const sa = a[0], sb = b[0];
+    const va = parseInt(a.slice(1)) || 0;
+    const vb = parseInt(b.slice(1)) || 0;
+    const suitOrder = { W: 0, T: 1, B: 2, F: 3, D: 4 };
+    const orderA = (suitOrder[sa] || 99) * 100 + va;
+    const orderB = (suitOrder[sb] || 99) * 100 + vb;
+    return orderA - orderB;
+  });
+  
+  const first = keys[0];
+  
+  // 先尝试组成刻子（如果有3张或以上）
   if (counts[first] >= 3) {
     counts[first] -= 3;
     if (canSplitMelds(counts, need - 1)) return true;
     counts[first] += 3;
   }
   
+  // 再尝试组成顺子（如果是数牌且v <= 7）
   const s = first[0];
   const v = parseInt(first.slice(1));
-  if ((s === SUIT_W || s === SUIT_T || s === SUIT_B) && v <= 7) {
+  if ((s === SUIT_W || s === SUIT_T || s === SUIT_B) && v <= 7 && counts[first] > 0) {
     const k2 = s + (v + 1), k3 = s + (v + 2);
     if ((counts[k2] || 0) > 0 && (counts[k3] || 0) > 0) {
       counts[first]--;
@@ -1834,6 +1800,7 @@ function canSplitMelds(counts, need) {
       counts[k3]++;
     }
   }
+  
   return false;
 }
 
@@ -1897,7 +1864,7 @@ function aiChooseDiscard(pid) {
   for (let i = 0; i < 4; i++) {
     if (i !== pid) {
       if (S.players[i].declaredListen) {
-        listeningPlayers.push(i);
+      listeningPlayers.push(i);
         playerWaitKeys[i] = S.players[i].waitKeys || [];
       } else {
         // 即使沒報聽，也檢查是否可能聽牌
@@ -1925,13 +1892,13 @@ function aiChooseDiscard(pid) {
     const tileKey_t = tileKey(t);
     
     // 檢查已報聽的對手
-    listeningPlayers.forEach(lp => {
-      if (canWinOn(lp, t)) {
+      listeningPlayers.forEach(lp => {
+        if (canWinOn(lp, t)) {
         dangerLevel += 2000; // 已報聽且能胡，極度危險
       } else if (playerWaitKeys[lp] && playerWaitKeys[lp].includes(tileKey_t)) {
         dangerLevel += 800; // 已報聽且等這張牌
-      }
-    });
+        }
+      });
     
     // 檢查未報聽但可能聽牌的對手
     Object.keys(playerWaitKeys).forEach(lp => {
@@ -2459,8 +2426,8 @@ function discard(p, tile) {
     }
     // 優先級4：吃（只能吃上家的牌）
     else {
-      const chowPatterns = canChow(pid, tile);
-      if (chowPatterns.length > 0) {
+    const chowPatterns = canChow(pid, tile);
+    if (chowPatterns.length > 0) {
         reactions.push({ pid, type: 'chow', tile, patterns: chowPatterns, priority: 4 });
       }
     }
@@ -2501,7 +2468,8 @@ function discard(p, tile) {
 function showReactionPanel(reactions) {
   const me = S.players[0];
   if (me.declaredListen) {
-    reactions = reactions.filter(r => r.type === 'hu');
+    // 報聽後只能胡或槓，不能碰或吃
+    reactions = reactions.filter(r => r.type === 'hu' || r.type === 'kong');
     if (reactions.length === 0) {
       clearReactionButtons();
       S.turn = getNextTurn(S.lastDiscard.from);
@@ -2703,9 +2671,9 @@ function handleAIReaction(reactions) {
       kongChance = 0.15;
     }
     if (Math.random() < kongChance) {
-      doKong(kongReact.pid, kongReact.tile);
-      setTimeout(stepAI, 1000 + Math.random() * 1000);
-      return;
+    doKong(kongReact.pid, kongReact.tile);
+    setTimeout(stepAI, 1000 + Math.random() * 1000);
+    return;
     }
   }
   
@@ -2725,9 +2693,9 @@ function handleAIReaction(reactions) {
       pongChance = 0.3;
     }
     if (Math.random() < pongChance) {
-      doPong(pongReact.pid, pongReact.tile);
-      setTimeout(stepAI, 1000 + Math.random() * 1000);
-      return;
+    doPong(pongReact.pid, pongReact.tile);
+    setTimeout(stepAI, 1000 + Math.random() * 1000);
+    return;
     }
   }
   
@@ -3013,17 +2981,6 @@ function calcFanDetails(winner, winTile, selfDraw) {
     categories.push('槓上開花');
   }
   
-  // 金牌相關
-  if (S.rules.gold.enabled) {
-    const keys = allTiles.map(tileKey);
-    const goldOwned = keys.filter(k => S.goldKeys.includes(k)).length;
-    fan += goldOwned * S.rules.gold.perGold;
-    if (goldOwned > 0) categories.push(`金牌x${goldOwned}`);
-    if (S.goldKeys.includes(tileKey(winTile))) {
-      fan += S.rules.gold.winOnGold;
-      categories.push('金牌胡');
-    }
-  }
   
   // 如果沒有任何台型，算平胡
   if (categories.length === 0) {
@@ -3253,7 +3210,7 @@ function stepNext() {
         log('🚫 流局 - 牌山枯竭');
         S.phase = 'end';
         S.winner = null;
-        renderAll();
+    renderAll();
         setTimeout(() => showHandsAndContinue(), 1000);
         return;
       }
@@ -3270,7 +3227,7 @@ function stepNext() {
       const t = me.drawnTile;
       
       // 檢查是否能胡牌
-      if (isWinningNow(me.hand, me.melds, t)) {
+    if (isWinningNow(me.hand, me.melds, t)) {
         // 如果已經報聽，自動胡牌
         if (me.declaredListen) {
           setTimeout(() => {
@@ -3278,8 +3235,8 @@ function stepNext() {
           }, 500); // 稍微延遲，讓玩家看到摸到的牌
           return;
         } else {
-          document.getElementById('btnHu').disabled = false;
-          log('✨ 你可以自摸（按「胡牌」）或繼續出牌');
+      document.getElementById('btnHu').disabled = false;
+      log('✨ 你可以自摸（按「胡牌」）或繼續出牌');
           return; // 如果能胡，不自動丟牌
         }
       }
@@ -3321,14 +3278,15 @@ function stepNext() {
           }
         }
         
-        // 如果沒有加槓或暗槓的機會，且已報聽，自動丟掉摸到的牌
-        if (me.declaredListen && me.drawnTile) {
+        // 如果沒有加槓或暗槓的機會，且已報聽且已鎖定，自動丟掉摸到的牌
+        // 注意：只有在tingLocked為true時才自動丟牌（表示已經在報聽那回合丟過牌了）
+        if (me.declaredListen && me.tingLocked && me.drawnTile) {
           // 檢查丟掉摸到的牌後是否還能保持聽牌
           const testHand = me.hand.filter(t => t !== me.drawnTile);
           const canKeepListening = isListening(testHand, me.melds);
           
-          if (canKeepListening || me.tingLocked) {
-            // 如果能保持聽牌或已鎖定，自動丟掉摸到的牌
+          if (canKeepListening) {
+            // 如果能保持聽牌，自動丟掉摸到的牌
             setTimeout(() => {
               discard(0, me.drawnTile);
             }, 500); // 稍微延遲，讓玩家看到摸到的牌
@@ -3386,8 +3344,8 @@ function stepAI() {
       kongChance = 0.2;
     }
     if (Math.random() < kongChance) {
-      doConcealedKong(pid, cks[0]);
-      return;
+    doConcealedKong(pid, cks[0]);
+    return;
     }
   }
   
@@ -3412,9 +3370,9 @@ function stepAI() {
     if (Math.random() < kongChance) {
       const candidate = aks[0];
       // 搶槓檢查已經在doAddedKong內部進行，這裡直接調用
-      doAddedKong(pid, candidate.meldIndex);
-      return;
-    }
+    doAddedKong(pid, candidate.meldIndex);
+    return;
+  }
   }
   
   // 增強報聽判斷
@@ -3445,9 +3403,9 @@ function stepAI() {
     }
     
     if (Math.random() < listenChance) {
-      pl.declaredListen = true;
-      updateTianDiTing(pid);
-      log(`🔔 ${playerName(pid)} 報聽`);
+    pl.declaredListen = true;
+    updateTianDiTing(pid);
+    log(`🔔 ${playerName(pid)} 報聽`);
     }
   }
   
@@ -3494,20 +3452,6 @@ function renderAll() {
   document.getElementById('centerRound').textContent = roundStr;
   document.getElementById('centerRemain').textContent = Math.max(0, S.remain || (S.wall.length + S.deadWall.length));
   
-  // 金牌顯示
-  const goldDisplay = document.getElementById('goldDisplay');
-  const goldTiles = document.getElementById('goldTiles');
-  if (S.rules.gold.enabled && S.goldKeys && S.goldKeys.length > 0) {
-    goldDisplay.style.display = 'flex';
-    goldTiles.innerHTML = S.goldKeys.map(k => {
-      const text = keyToText(k);
-      let colorClass = 'suit-' + k[0];
-      return `<div class="gold-tile ${colorClass}">${text}</div>`;
-    }).join('');
-  } else {
-    goldDisplay.style.display = 'none';
-  }
-  
   // 對手區域
   const opponentsArea = document.getElementById('opponentsArea');
   let opponentsHTML = '';
@@ -3524,7 +3468,7 @@ function renderAll() {
           <div class="opponent-name">
             <div class="wind-icon">${wind}</div>
             <span>${name}</span>
-            ${isDealer ? '<span class="dealer-mark">莊</span>' : ''}
+            ${isDealer ? `<span class="dealer-mark">莊${S.dealerStreak > 0 ? `<span class="streak-mark">${S.dealerStreak}</span>` : ''}</span>` : ''}
             ${p.declaredListen ? '<span class="listen-mark">聽</span>' : ''}
           </div>
           <div class="opponent-score">${p.points.toLocaleString()}</div>
@@ -3534,8 +3478,7 @@ function renderAll() {
             <span class="discard-zone-label">捨牌</span>
             ${p.discards.map(t => {
               const k = tileKey(t);
-              const isGold = S.rules.gold.enabled && S.goldKeys.includes(k);
-              return `<div class="tile tile-xs suit-${t.suit} ${isGold ? 'gold' : ''}">${keyToText(k)}</div>`;
+              return `<div class="tile tile-xs suit-${t.suit}">${keyToText(k)}</div>`;
             }).join('')}
           </div>
           ${p.melds.length > 0 ? `
@@ -3548,8 +3491,7 @@ function renderAll() {
                       return `<div class="tile tile-xs" style="background: #4a5568; color: transparent;">牌</div>`;
                     }
                     const k = tileKey(t);
-                    const isGold = S.rules.gold.enabled && S.goldKeys.includes(k);
-                    return `<div class="tile tile-xs suit-${t.suit} ${isGold ? 'gold' : ''}">${keyToText(k)}</div>`;
+                    return `<div class="tile tile-xs suit-${t.suit}">${keyToText(k)}</div>`;
                   }).join('')}
                 </div>`;
               }).join('')}
@@ -3572,6 +3514,9 @@ function renderAll() {
   const myListenMark = document.getElementById('myListenMark');
   if (S.dealer === 0) {
     myDealerMark.classList.remove('hidden');
+    // 顯示連莊次數
+    const streakText = S.dealerStreak > 0 ? `<span class="streak-mark">${S.dealerStreak}</span>` : '';
+    myDealerMark.innerHTML = '莊' + streakText;
   } else {
     myDealerMark.classList.add('hidden');
   }
@@ -3634,8 +3579,7 @@ function renderAll() {
     const t = item.tile;
     const idx = item.index;
     const k = tileKey(t);
-    const isGold = S.rules.gold.enabled && S.goldKeys.includes(k);
-    handHTML += `<div class="tile tile-md suit-${t.suit} ${isGold ? 'gold' : ''}" onclick="onClickYourTile(${idx})">${keyToText(k)}</div>`;
+    handHTML += `<div class="tile tile-md suit-${t.suit}" onclick="onClickYourTile(${idx})">${keyToText(k)}</div>`;
   });
   
   // 摸到的牌始終顯示在最右側
@@ -3643,9 +3587,8 @@ function renderAll() {
     const t = drawnObj.tile;
     const idx = drawnObj.index;
     const k = tileKey(t);
-    const isGold = S.rules.gold.enabled && S.goldKeys.includes(k);
     handHTML += `<div style="width: 12px; flex-shrink: 0;"></div>`;
-    handHTML += `<div class="tile tile-md drawn suit-${t.suit} ${isGold ? 'gold' : ''}" onclick="onClickYourTile(${idx})">${keyToText(k)}</div>`;
+    handHTML += `<div class="tile tile-md drawn suit-${t.suit}" onclick="onClickYourTile(${idx})">${keyToText(k)}</div>`;
   }
   
   const handElement = document.getElementById('yourHand');
@@ -3680,8 +3623,7 @@ function renderAll() {
       
       const tilesHTML = tilesForDisp.map(t => {
         const k = tileKey(t);
-        const isGold = S.rules.gold.enabled && S.goldKeys.includes(k);
-        return `<span class="tile tile-sm suit-${t.suit} ${isGold ? 'gold' : ''}">${keyToText(k)}</span>`;
+        return `<span class="tile tile-sm suit-${t.suit}">${keyToText(k)}</span>`;
       }).join('');
       
       return `<div class="meld-badge"><span class="meld-label">${label}</span>${tilesHTML}</div>`;
@@ -3694,13 +3636,15 @@ function renderAll() {
   btnHu.disabled = true;
   if (S.turn === 0 && S.phase !== 'end' && S.waitReact === null) {
     // 檢查自摸：如果有摸到的牌，檢查是否能胡
-    if (me.drawnTile && me.hand.includes(me.drawnTile)) {
-      if (isWinningNow(me.hand, me.melds, me.drawnTile)) {
+    if (me.drawnTile) {
+      // 檢查drawnTile是否在手牌中（可能剛摸到還沒處理）
+      const hasDrawnTile = me.hand.some(t => t === me.drawnTile || (t.suit === me.drawnTile.suit && t.rank === me.drawnTile.rank && (!t.name || t.name === me.drawnTile.name)));
+      if (hasDrawnTile && isWinningNow(me.hand, me.melds, me.drawnTile)) {
         btnHu.disabled = false;
       }
     }
     // 檢查榮胡：如果有lastDiscard且能胡
-    else if (S.lastDiscard && S.lastDiscard.from !== 0) {
+    if (S.lastDiscard && S.lastDiscard.from !== 0) {
       if (canWinOn(0, S.lastDiscard.tile)) {
         btnHu.disabled = false;
       }
@@ -3790,8 +3734,7 @@ function showHandsAndContinue() {
     const sortedHand = p.hand.slice().sort((a, b) => tileSortKey(a) - tileSortKey(b));
     sortedHand.forEach(t => {
       const k = tileKey(t);
-      const isGold = S.rules.gold.enabled && S.goldKeys.includes(k);
-      html += `<div class="tile tile-sm suit-${t.suit} ${isGold ? 'gold' : ''}">${keyToText(k)}</div>`;
+      html += `<div class="tile tile-sm suit-${t.suit}">${keyToText(k)}</div>`;
     });
     html += '</div>';
     
@@ -3801,8 +3744,7 @@ function showHandsAndContinue() {
         html += '<div style="display: flex; gap: 2px;">';
         m.tiles.forEach(t => {
           const k = tileKey(t);
-          const isGold = S.rules.gold.enabled && S.goldKeys.includes(k);
-          html += `<div class="tile tile-sm suit-${t.suit} ${isGold ? 'gold' : ''}">${keyToText(k)}</div>`;
+          html += `<div class="tile tile-sm suit-${t.suit}">${keyToText(k)}</div>`;
         });
         html += '</div>';
       });
@@ -3934,18 +3876,47 @@ document.getElementById('btnListen').onclick = () => {
   
   // 計算等牌
   let waits = [];
-  if (listenAfterDiscard && discardTile) {
-    // 如果丟掉某張牌後能聽牌，計算丟牌後的等牌
-    const testHand = me.hand.filter(t => t !== discardTile);
-    waits = calcWaitingTiles(testHand, me.melds);
-    me.tingLocked = true; // 鎖定聽牌，必須丟掉這張牌
-    log('🔔 你報聽了！');
-    log('👂 等牌：' + waits.map(k => keyToText(k)).join(' '));
-    log('⚠️ 請立即打出 ' + keyToText(tileKey(discardTile)) + ' 以完成聽牌');
+  if (listenAfterDiscard) {
+    // 如果丟掉某張牌後能聽牌，讓玩家自己選擇要丟的牌
+    // 找出所有能聽牌的丟牌選擇
+    const validDiscards = [];
+    for (const tile of me.hand) {
+      const testHand = me.hand.filter(t => t !== tile);
+      if (isListening(testHand, me.melds)) {
+        validDiscards.push(tile);
+      }
+    }
+    
+    if (validDiscards.length > 0) {
+      // 顯示所有能聽牌的選擇（使用第一個作為示例計算等牌）
+      const firstDiscard = validDiscards[0];
+      const testHand = me.hand.filter(t => t !== firstDiscard);
+      waits = calcWaitingTiles(testHand, me.melds);
+      me.tingLocked = false; // 先不鎖定，等丟牌後再鎖定
+      me.requiredDiscard = null; // 不指定特定牌，讓玩家自己選擇
+      log('🔔 你報聽了！');
+      log('👂 請選擇一張能形成聽牌的牌打出');
+      if (validDiscards.length > 1) {
+        const discardTexts = validDiscards.map(t => keyToText(tileKey(t))).join('、');
+        log('💡 可選：' + discardTexts);
+      }
+      // 計算所有可能的等牌（取並集）
+      const allWaits = new Set();
+      validDiscards.forEach(tile => {
+        const testHand = me.hand.filter(t => t !== tile);
+        const tileWaits = calcWaitingTiles(testHand, me.melds);
+        tileWaits.forEach(w => allWaits.add(w));
+      });
+      waits = Array.from(allWaits);
+      if (waits.length > 0) {
+        log('👂 等牌：' + waits.map(k => keyToText(k)).join(' '));
+      }
+    }
   } else {
     // 已經聽牌，直接計算等牌
     waits = calcWaitingTiles(me.hand, me.melds);
     me.tingLocked = false; // 不鎖定，可以打任意能保持聽牌的牌
+    me.requiredDiscard = null; // 清除需要丟的牌
     log('🔔 你報聽了！');
     log('👂 等牌：' + waits.map(k => keyToText(k)).join(' '));
   }
@@ -3958,6 +3929,12 @@ document.getElementById('btnListen').onclick = () => {
 
 document.getElementById('btnKong').onclick = () => {
   initAudio();
+  // 如果其他玩家打出牌，使用反應處理
+  if (S.lastDiscard !== null && S.waitReact !== null) {
+    handleKongClick();
+    return;
+  }
+  // 如果是自己的回合，進行暗槓或加槓
   if (S.turn !== 0 || S.phase === 'end' || S.lastDiscard !== null) return;
   const me = S.players[0];
   const added = canAddedKong(0);
@@ -4010,35 +3987,46 @@ function onClickYourTile(idx) {
     return;
   }
   
+  // 如果已經報聽但還沒鎖定（剛按聽牌按鈕的那回合）
   if (me.declaredListen && !me.tingLocked) {
     const tile = me.hand[idx];
+    
+    // 檢查丟牌後是否能形成聽牌（讓玩家自己選擇）
     const afterDiscard = me.hand.filter(t => t !== tile);
     if (!isListening(afterDiscard, me.melds)) {
       log('⚠️ 報聽後只能丟會形成聽牌的手牌');
       return;
     }
+    
+    // 丟牌後鎖定聽牌，並重新計算等牌
+    discard(0, tile);
+    me.tingLocked = true;
+    const waits = calcWaitingTiles(afterDiscard, me.melds);
+    me.waitKeys = waits.slice();
+    if (waits.length > 0) {
+      log('🔒 聽牌已鎖定，等牌：' + waits.map(k => keyToText(k)).join(' '));
+      log('⚠️ 之後只能打摸到的牌');
+    } else {
+      log('🔒 聽牌已鎖定，之後只能打摸到的牌');
+    }
+    return;
   }
   
+  // 如果已經鎖定聽牌（報聽後的回合）
   if (me.declaredListen && me.tingLocked) {
-    // 如果鎖定聽牌，檢查是否有指定的丟牌
-    // 鎖定聽牌時，應該丟掉報聽時確定的那張牌
-    const kongCount = countKongs(me);
-    const total = me.hand.length + me.melds.reduce((s, m) => s + m.tiles.length, 0);
-    const expectedFull = (S.dealer === 0 ? 17 : 16) + kongCount;
-    
-    // 如果手牌是滿的，必須丟掉能形成聽牌的牌
-    if (total === expectedFull) {
-      const selected = me.hand[idx];
-      const testHand = me.hand.filter(t => t !== selected);
-      if (!isListening(testHand, me.melds)) {
-        log('⚠️ 已鎖定聽牌，只能打能形成聽牌的牌');
-        return;
-      }
-    } else if (me.drawnTile) {
-      // 如果剛摸到牌，只能打摸到的牌
+    // 如果剛摸到牌，只能打摸到的牌
+    if (me.drawnTile) {
       const selected = me.hand[idx];
       if (selected !== me.drawnTile) {
         log('⚠️ 已鎖定聽牌，只能打剛摸的牌');
+        return;
+      }
+    } else {
+      // 如果沒有摸到的牌（不應該發生），檢查是否能保持聽牌
+      const selectedTile = me.hand[idx];
+      const afterDiscard = me.hand.filter(t => t !== selectedTile);
+      if (!isListening(afterDiscard, me.melds)) {
+        log('⚠️ 已鎖定聽牌，只能打能保持聽牌的牌');
         return;
       }
     }
@@ -4046,11 +4034,6 @@ function onClickYourTile(idx) {
   
   const tile = me.hand[idx];
   discard(0, tile);
-  
-  if (me.declaredListen && !me.tingLocked) {
-    me.tingLocked = true;
-    log('🔒 聽牌已鎖定，之後只能打摸到的牌');
-  }
 }
 
 /* ========= 啟動遊戲 ========= */
