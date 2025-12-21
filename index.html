@@ -2688,10 +2688,15 @@ function doChow(pid, tile, pattern) {
   S.lastAction = 'chow';
   S.lastActor = pid;
   
-  // 連線模式：發送吃操作
-  if (isOnlineMode && pid === mySeat && socket) {
-    sendPlayerAction('chow', { tile: tileKey(tile), pattern: pattern });
-    syncGameStateToServer();
+  // 連線模式：發送吃操作和同步狀態
+  if (isOnlineMode && socket) {
+    if (pid === mySeat) {
+      sendPlayerAction('chow', { tile: tileKey(tile), pattern: pattern });
+      syncGameStateToServer();
+    } else if (isHost && !onlinePlayers.some(op => op.seat === pid)) {
+      // 房主控制 AI 吃牌
+      syncGameStateToServer();
+    }
   }
 }
 
@@ -2842,6 +2847,16 @@ function doConcealedKong(pid, key) {
   
   S.lastAction = 'concealedKong';
   S.lastActor = pid;
+  
+  // 連線模式：同步狀態
+  if (isOnlineMode && socket) {
+    if (pid === mySeat) {
+      syncGameStateToServer();
+    } else if (isHost && !onlinePlayers.some(op => op.seat === pid)) {
+      // 房主控制 AI 暗槓
+      syncGameStateToServer();
+    }
+  }
 }
 
 function doAddedKong(pid, meldIndex) {
@@ -2948,6 +2963,16 @@ function doAddedKong(pid, meldIndex) {
   
   S.lastAction = 'addedKong';
   S.lastActor = pid;
+  
+  // 連線模式：同步狀態
+  if (isOnlineMode && socket) {
+    if (pid === mySeat) {
+      syncGameStateToServer();
+    } else if (isHost && !onlinePlayers.some(op => op.seat === pid)) {
+      // 房主控制 AI 加槓
+      syncGameStateToServer();
+    }
+  }
 }
 
 function doPong(pid, tile) {
@@ -2990,10 +3015,15 @@ function doPong(pid, tile) {
   hideReactionPanel();
   renderAll();
   
-  // 連線模式：發送碰操作
-  if (isOnlineMode && pid === mySeat && socket) {
-    sendPlayerAction('pong', { tile: k });
-    syncGameStateToServer();
+  // 連線模式：發送碰操作和同步狀態
+  if (isOnlineMode && socket) {
+    if (pid === mySeat) {
+      sendPlayerAction('pong', { tile: k });
+      syncGameStateToServer();
+    } else if (isHost && !onlinePlayers.some(op => op.seat === pid)) {
+      // 房主控制 AI 碰牌
+      syncGameStateToServer();
+    }
   }
 }
 
@@ -3047,10 +3077,15 @@ function doKong(pid, tile) {
   hideReactionPanel();
   renderAll();
   
-  // 連線模式：發送槓操作
-  if (isOnlineMode && pid === mySeat && socket) {
-    sendPlayerAction('kong', { tile: k });
-    syncGameStateToServer();
+  // 連線模式：發送槓操作和同步狀態
+  if (isOnlineMode && socket) {
+    if (pid === mySeat) {
+      sendPlayerAction('kong', { tile: k });
+      syncGameStateToServer();
+    } else if (isHost && !onlinePlayers.some(op => op.seat === pid)) {
+      // 房主控制 AI 槓牌
+      syncGameStateToServer();
+    }
   }
   
   const myPSeatKong = getMyPlayerSeat();
@@ -3099,10 +3134,16 @@ function discard(p, tile) {
   S.players[p].rinshan = false;
   renderAll();
   
-  // 連線模式：發送出牌操作
-  if (isOnlineMode && p === mySeat && socket) {
-    sendPlayerAction('discard', { tile: tileKey(tile) });
-    syncGameStateToServer();
+  // 連線模式：發送出牌操作和同步狀態
+  if (isOnlineMode && socket) {
+    if (p === mySeat) {
+      // 自己出牌：發送操作並同步
+      sendPlayerAction('discard', { tile: tileKey(tile) });
+      syncGameStateToServer();
+    } else if (isHost && !onlinePlayers.some(op => op.seat === p)) {
+      // 房主控制 AI 出牌：只同步狀態
+      syncGameStateToServer();
+    }
   }
   
   {
@@ -3169,8 +3210,11 @@ function discard(p, tile) {
     const myPSeatDiscard = getMyPlayerSeat();
     
     // 連線模式：同步狀態給其他玩家，讓他們知道有反應可以選擇
-    if (isOnlineMode && p === mySeat) {
-      syncGameStateToServer();
+    if (isOnlineMode && socket) {
+      const isAI = !onlinePlayers.some(op => op.seat === p);
+      if (p === mySeat || (isHost && isAI)) {
+        syncGameStateToServer();
+      }
     }
     
     // 檢查當前玩家是否能胡（榮胡）
@@ -3251,10 +3295,13 @@ function discard(p, tile) {
     // 确保标志已重置
     isProcessingStep = false;
     
-    // 連線模式：同步狀態後，由各自客戶端判斷是否輪到自己
-    if (isOnlineMode && p === mySeat) {
-      // 我出的牌，同步狀態
-      syncGameStateToServer();
+    // 連線模式：同步狀態
+    if (isOnlineMode && socket) {
+      const isAI = !onlinePlayers.some(op => op.seat === p);
+      if (p === mySeat || (isHost && isAI)) {
+        // 自己出牌或房主控制 AI 出牌，同步狀態
+        syncGameStateToServer();
+      }
     }
     
     // 判斷下一個玩家
@@ -3635,6 +3682,12 @@ function handleAIReaction(reactions) {
   S.turn = getNextTurn(S.lastDiscard.from);
   S.lastDiscard = null;
   S.waitReact = null;
+  
+  // 連線模式：房主控制 AI 跳過反應後同步狀態
+  if (isOnlineMode && isHost && socket) {
+    syncGameStateToServer();
+  }
+  
   stepNext();
 }
 
@@ -3761,10 +3814,15 @@ function doWin(winner, from, tile, selfDraw) {
     }
   }
   
-  // 連線模式：發送胡牌操作
-  if (isOnlineMode && winner === mySeat && socket) {
-    sendPlayerAction('win', { tile: tileKey(tile), from: from, selfDraw: selfDraw });
-    syncGameStateToServer();
+  // 連線模式：發送胡牌操作和同步狀態
+  if (isOnlineMode && socket) {
+    if (winner === mySeat) {
+      sendPlayerAction('win', { tile: tileKey(tile), from: from, selfDraw: selfDraw });
+      syncGameStateToServer();
+    } else if (isHost && !onlinePlayers.some(op => op.seat === winner)) {
+      // 房主控制 AI 胡牌
+      syncGameStateToServer();
+    }
   }
   
   setTimeout(() => showHandsAndContinue(), 1000);
