@@ -1146,6 +1146,25 @@ body {
 </head>
 <body>
 
+<!-- 模式選擇面板 -->
+<div id="modeSelectPanel" class="modal-overlay show">
+  <div class="modal-content" style="max-width: 400px; text-align: center;">
+    <div class="modal-title" style="font-size: 28px; margin-bottom: 24px;">🎮 麻將遊戲</div>
+    <div style="margin: 32px 0;">
+      <button class="btn btn-gold" onclick="startSinglePlayerMode()" style="width: 100%; padding: 16px; font-size: 18px; margin-bottom: 16px;">
+        🎯 單機模式
+      </button>
+      <button class="btn btn-secondary" onclick="startOnlineMode()" style="width: 100%; padding: 16px; font-size: 18px;">
+        🌐 連線模式
+      </button>
+    </div>
+    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 24px;">
+      <div>單機模式：與AI對戰</div>
+      <div>連線模式：與朋友一起玩</div>
+    </div>
+  </div>
+</div>
+
 <!-- 連線模式面板 -->
 <div id="onlinePanel" class="modal-overlay" style="display: none;">
   <div class="modal-content" style="max-width: 400px; max-height: 90vh; overflow-y: auto;">
@@ -2067,7 +2086,7 @@ function startNewHand(isFirstGame = false) {
       waitKeys: [],
       tianTing: false,
       diTing: false,
-      isAI: i !== 0,
+      isAI: (gameMode === 'online') ? (i !== mySeat) : (i !== 0),
       rinshan: false,
       drawCount: 0,
       tingLocked: false,
@@ -5405,6 +5424,42 @@ document.getElementById('settingsBtn').onclick = () => {
   showSettings();
 };
 
+// ========= 模式選擇功能 =========
+let gameMode = null; // 'single' 或 'online'
+
+function startSinglePlayerMode() {
+  gameMode = 'single';
+  const modePanel = document.getElementById('modeSelectPanel');
+  if (modePanel) {
+    modePanel.classList.remove('show');
+    setTimeout(() => {
+      modePanel.style.display = 'none';
+    }, 300);
+  }
+  initAudio();
+  startNewHand(true);
+}
+
+function startOnlineMode() {
+  gameMode = 'online';
+  const modePanel = document.getElementById('modeSelectPanel');
+  if (modePanel) {
+    modePanel.classList.remove('show');
+    setTimeout(() => {
+      modePanel.style.display = 'none';
+    }, 300);
+  }
+  initAudio();
+  // 显示连线面板
+  const onlinePanel = document.getElementById('onlinePanel');
+  if (onlinePanel) {
+    onlinePanel.style.display = 'flex';
+    if (!socket || !socket.connected) {
+      initOnline();
+    }
+  }
+}
+
 // ========= 連線模式功能 =========
 let socket = null;
 let currentRoomId = null;
@@ -5470,6 +5525,7 @@ function initOnline() {
   
   socket.on('gameStarted', (data) => {
     log('🎮 遊戲開始！');
+    // 所有玩家收到 gameStarted 事件时，都应该关闭连线面板并初始化游戏
     startOnlineGame(data);
   });
   
@@ -5542,9 +5598,10 @@ function joinOnlineRoom() {
   });
 }
 
-// 開始遊戲（只有房主可以）
+// 開始遊戲（所有玩家都會收到 gameStarted 事件）
 function startOnlineGame(data) {
   if (!data) {
+    // 如果是房主手动点击开始游戏按钮
     socket.emit('getRoomState', currentRoomId, (response) => {
       if (response.success) {
         startOnlineGame(response.room);
@@ -5553,21 +5610,47 @@ function startOnlineGame(data) {
     return;
   }
   
-  const isHost = data.players.find(p => p.id === socket.id)?.isHost;
-  if (!isHost && data.status !== 'playing') {
-    return;
-  }
-  
+  // 关闭连线面板（所有玩家都需要关闭，无论是否是房主）
   const onlinePanel = document.getElementById('onlinePanel');
   if (onlinePanel) {
     onlinePanel.style.display = 'none';
   }
   
-  if (data.players && data.players.length > 0) {
-    const playerNames = data.players.map(p => p.name);
-    GAME_SETTINGS.playerNames = playerNames;
+  // 检查是否是房主，或者游戏状态已经是 playing
+  const isHost = data.players.find(p => p.id === socket.id)?.isHost;
+  
+  // 如果收到 gameStarted 事件，说明游戏已经开始，所有玩家都应该初始化游戏
+  // 如果状态是 playing，也说明游戏已经开始
+  // 只有当既不是房主，状态也不是 playing，且没有收到 gameStarted 事件时，才等待
+  if (!isHost && data.status !== 'playing') {
+    // 检查是否是通过 gameStarted 事件调用的（通过检查调用栈或添加参数）
+    // 如果是通过 roomState 更新的，且状态不是 playing，则等待
+    log('⏳ 等待房主開始遊戲...');
+    return;
   }
   
+  // 设置玩家名字（连线模式）
+  if (data.players && data.players.length > 0) {
+    // 使用连线玩家的名字，不足4人时用随机名字补位
+    const onlinePlayerNames = data.players.map(p => p.name);
+    const totalPlayers = 4;
+    
+    // 如果连线玩家不足4人，生成随机名字补位
+    if (onlinePlayerNames.length < totalPlayers) {
+      const needAI = totalPlayers - onlinePlayerNames.length;
+      // 从名字池中随机选择不重复的名字
+      const shuffled = [...NAME_POOL].sort(() => Math.random() - 0.5);
+      const aiNames = shuffled.slice(0, needAI);
+      const allNames = [...onlinePlayerNames, ...aiNames];
+      GAME_SETTINGS.playerNames = allNames;
+      log(`🤖 自動補位 ${needAI} 位AI玩家：${aiNames.join('、')}`);
+    } else {
+      GAME_SETTINGS.playerNames = onlinePlayerNames;
+    }
+  }
+  
+  // 初始化游戏（所有玩家都应该初始化，因为游戏已经开始了）
+  // 当收到 gameStarted 事件时，说明房主已经点击开始，所有玩家都应该初始化
   S = null;
   dealerStreak = 0;
   document.getElementById('log').innerHTML = '';
@@ -5767,7 +5850,8 @@ function keyToTileFromKey(k) {
 // 修改遊戲操作函數以支持連線（在函數定義後包裝）
 // 注意：這些修改需要在函數定義之後進行
 
-startNewHand(true);
+// 页面加载时不自动启动游戏，等待用户选择模式
+// startNewHand(true); // 已移除，改为模式选择界面
 </script>
 </body>
 </html>
