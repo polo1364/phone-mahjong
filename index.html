@@ -2155,9 +2155,31 @@ function startNewHand(isFirstGame = false) {
   
   // 在連線模式下，判斷莊家類型
   const isDealerMe = gameMode === 'online' ? (S.dealer === mySeat) : (S.dealer === 0);
-  const isDealerAI = gameMode === 'online' ? 
-    (!onlinePlayers.some(p => p.seat === S.dealer)) : 
-    (S.dealer !== 0);
+  
+  // 確保 onlinePlayers 已定義
+  let isDealerAI = false;
+  if (gameMode === 'online') {
+    if (!onlinePlayers || onlinePlayers.length === 0) {
+      console.error('❌ startNewHand: onlinePlayers 未定義或為空！');
+      // 假設只有自己是真人玩家
+      isDealerAI = S.dealer !== mySeat;
+    } else {
+      isDealerAI = !onlinePlayers.some(p => p.seat === S.dealer);
+    }
+  } else {
+    isDealerAI = S.dealer !== 0;
+  }
+  
+  // Debug log
+  if (gameMode === 'online') {
+    console.log('=== 連線模式莊家判斷 ===');
+    console.log('S.dealer:', S.dealer);
+    console.log('mySeat:', mySeat);
+    console.log('isHost:', isHost);
+    console.log('onlinePlayers:', JSON.stringify(onlinePlayers?.map(p => ({seat: p.seat, name: p.name})) || []));
+    console.log('isDealerMe:', isDealerMe);
+    console.log('isDealerAI:', isDealerAI);
+  }
   
   if (isDealerMe) {
     log(`👉 莊家持有17張牌，請直接出牌`);
@@ -3314,7 +3336,13 @@ function discard(p, tile) {
       stepNext();
     } else {
       // 連線模式，判斷是否是AI
+      // 確保 onlinePlayers 已定義
+      if (!onlinePlayers || onlinePlayers.length === 0) {
+        console.error('❌ discard: onlinePlayers 未定義或為空！');
+        return;
+      }
       const isNextPlayerAI = !onlinePlayers.some(op => op.seat === nextTurn);
+      console.log('discard: nextTurn=', nextTurn, ', isNextPlayerAI=', isNextPlayerAI, ', isHost=', isHost);
       if (isNextPlayerAI && isHost) {
         // AI玩家，房主控制
         setTimeout(stepNext, 300);
@@ -4503,8 +4531,21 @@ function stepNext() {
     // 不是當前玩家的回合
     // 連線模式：判斷是否是AI（只有房主控制AI）
     if (isOnlineMode) {
+      // 確保 onlinePlayers 已定義
+      if (!onlinePlayers || onlinePlayers.length === 0) {
+        console.error('❌ onlinePlayers 未定義或為空！');
+        return;
+      }
+      
       // 檢查是否是真人玩家
       const isRealPlayer = onlinePlayers.some(p => p.seat === S.turn);
+      
+      // Debug log
+      console.log('=== stepNext 連線模式判斷 ===');
+      console.log('S.turn:', S.turn);
+      console.log('isHost:', isHost);
+      console.log('onlinePlayers seats:', onlinePlayers.map(p => p.seat));
+      console.log('isRealPlayer:', isRealPlayer);
       
       if (isRealPlayer) {
         // 真人玩家，等待他們自己出牌
@@ -4527,6 +4568,14 @@ function stepNext() {
 }
 
 function stepAI() {
+  console.log('=== stepAI 開始 ===');
+  console.log('S.phase:', S?.phase);
+  console.log('S.turn:', S?.turn);
+  console.log('isOnlineMode:', isOnlineMode);
+  console.log('isHost:', isHost);
+  console.log('mySeat:', mySeat);
+  console.log('onlinePlayers:', JSON.stringify(onlinePlayers?.map(p => ({seat: p.seat, name: p.name}))));
+  
   if (S.phase === 'end') return;
   
   // 連線模式下，只有房主控制AI
@@ -4536,7 +4585,12 @@ function stepAI() {
   }
   
   const myPSeatAI = getMyPlayerSeat();
-  if (S.turn === myPSeatAI) return;
+  if (S.turn === myPSeatAI) {
+    console.log('stepAI: 當前回合是自己，跳過');
+    return;
+  }
+  
+  console.log('stepAI: 準備控制 AI 玩家:', S.turn);
   
   const pid = S.turn;
   const pl = S.players[pid];
