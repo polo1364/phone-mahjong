@@ -3690,9 +3690,27 @@ function handleAIReaction(reactions) {
     return;
   }
   
+  // 檢查 reactions 是否有效
+  if (!reactions || !Array.isArray(reactions) || reactions.length === 0) {
+    console.warn('⚠️ handleAIReaction: reactions 為 null 或空數組');
+    return;
+  }
+  
+  // 檢查 S 是否存在
+  if (!S) {
+    console.warn('⚠️ handleAIReaction: S 為 null');
+    return;
+  }
+  
   // 優先級1：胡牌（AI能胡時，根據情況決定是否胡）
   const huReact = reactions.find(r => r.type === 'hu');
   if (huReact) {
+    // 檢查 S.lastDiscard 是否存在
+    if (!S.lastDiscard || S.lastDiscard.from === undefined) {
+      console.warn('⚠️ handleAIReaction: S.lastDiscard 為 null 或 from 未定義，無法處理胡牌反應');
+      return;
+    }
+    
     const aiPlayer = S.players[huReact.pid];
     // 檢查是否已經報聽，如果報聽則必須胡
     if (aiPlayer.declaredListen) {
@@ -3825,7 +3843,15 @@ function handleAIReaction(reactions) {
     }
   }
   
-  S.turn = getNextTurn(S.lastDiscard.from);
+  // 檢查 S.lastDiscard 是否存在
+  if (!S.lastDiscard || S.lastDiscard.from === undefined) {
+    console.warn('⚠️ handleAIReaction: S.lastDiscard 為 null 或 from 未定義，無法計算下一個回合');
+    // 如果沒有 lastDiscard，使用當前回合的下一個玩家
+    S.turn = (S.turn + 1) % 4;
+  } else {
+    S.turn = getNextTurn(S.lastDiscard.from);
+  }
+  
   S.lastDiscard = null;
   S.waitReact = null;
   
