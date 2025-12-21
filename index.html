@@ -6788,21 +6788,22 @@ function handleRemoteAction(data) {
   }
   
   // 【重要】延迟请求状态同步，确保战况即时更新
-  // 非房主玩家总是请求房主的状态，因为房主的状态是最权威的
+  // 所有玩家（包括房主）都应该请求房主的状态，因为房主的状态是最权威的
   // 房主的状态包含了所有玩家的最新战况（分数、手牌数、剩余牌数等）
-  if (socket && currentRoomId && !isHost) {
+  if (socket && currentRoomId) {
     setTimeout(() => {
       socket.emit('getRoomState', currentRoomId, (response) => {
         if (response.success && response.room && response.room.gameState) {
-          console.log('handleRemoteAction: 非房主请求房主状态同步，确保战况即时更新, action:', action);
+          if (isHost) {
+            console.log('handleRemoteAction: 房主请求状态同步，确保战况即时更新, action:', action);
+          } else {
+            console.log('handleRemoteAction: 非房主请求房主状态同步，确保战况即时更新, action:', action);
+          }
           // 从房主同步状态（房主的状态是最权威的）
-          syncGameState(response.room.gameState, null);
+          syncGameState(response.room.gameState, playerSeat);
         }
       });
-    }, 300); // 延迟300ms，等待房主同步状态
-  } else if (isHost) {
-    // 房主：确保状态已同步（应该已经通过 syncGameStateToServer 同步了）
-    console.log('handleRemoteAction: 房主收到操作, action:', action, ', 状态应该已同步');
+    }, 300); // 延迟300ms，等待操作玩家同步状态到服务器
   }
 }
 
