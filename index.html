@@ -2754,21 +2754,30 @@ function doChow(pid, tile, pattern) {
   if (pid === myPSeat) {
     // 轮到自己，等待出牌
     log('👉 輪到你了，請出牌');
-  } else if (!isOnlineMode) {
-    // 单机模式，直接调用 stepNext
-    stepNext();
   } else {
-    // 连线模式，判断是否是AI
-    if (!onlinePlayers || onlinePlayers.length === 0) {
-      console.error('❌ doChow: onlinePlayers 未定義或為空！');
-      return;
+    console.log('doChow: 不是当前玩家，继续游戏, pid:', pid, ', S.turn:', S.turn);
+    if (!isOnlineMode) {
+      // 单机模式，直接调用 stepNext
+      stepNext();
+    } else {
+      // 连线模式，判断是否是AI
+      if (!onlinePlayers || onlinePlayers.length === 0) {
+        console.error('❌ doChow: onlinePlayers 未定義或為空！');
+        return;
+      }
+      const isAI = !onlinePlayers.some(op => op.seat === pid);
+      console.log('doChow: isAI:', isAI, ', isHost:', isHost, ', pid:', pid);
+      if (isAI && isHost) {
+        // AI玩家，房主控制
+        console.log('doChow: 调用 stepNext 继续AI玩家回合');
+        setTimeout(stepNext, 300);
+      } else if (!isAI) {
+        // 真人玩家会通过状态同步自动触发他们的回合
+        console.log('doChow: 真人玩家，等待状态同步');
+      } else {
+        console.log('doChow: 非房主，等待状态同步');
+      }
     }
-    const isAI = !onlinePlayers.some(op => op.seat === pid);
-    if (isAI && isHost) {
-      // AI玩家，房主控制
-      setTimeout(stepNext, 300);
-    }
-    // 真人玩家会通过状态同步自动触发他们的回合
   }
 }
 
@@ -3105,21 +3114,30 @@ function doPong(pid, tile) {
   if (pid === myPSeat) {
     // 轮到自己，等待出牌
     log('👉 輪到你了，請出牌');
-  } else if (!isOnlineMode) {
-    // 单机模式，直接调用 stepNext
-    stepNext();
   } else {
-    // 连线模式，判断是否是AI
-    if (!onlinePlayers || onlinePlayers.length === 0) {
-      console.error('❌ doPong: onlinePlayers 未定義或為空！');
-      return;
+    console.log('doPong: 不是当前玩家，继续游戏, pid:', pid, ', S.turn:', S.turn);
+    if (!isOnlineMode) {
+      // 单机模式，直接调用 stepNext
+      stepNext();
+    } else {
+      // 连线模式，判断是否是AI
+      if (!onlinePlayers || onlinePlayers.length === 0) {
+        console.error('❌ doPong: onlinePlayers 未定義或為空！');
+        return;
+      }
+      const isAI = !onlinePlayers.some(op => op.seat === pid);
+      console.log('doPong: isAI:', isAI, ', isHost:', isHost, ', pid:', pid);
+      if (isAI && isHost) {
+        // AI玩家，房主控制
+        console.log('doPong: 调用 stepNext 继续AI玩家回合');
+        setTimeout(stepNext, 300);
+      } else if (!isAI) {
+        // 真人玩家会通过状态同步自动触发他们的回合
+        console.log('doPong: 真人玩家，等待状态同步');
+      } else {
+        console.log('doPong: 非房主，等待状态同步');
+      }
     }
-    const isAI = !onlinePlayers.some(op => op.seat === pid);
-    if (isAI && isHost) {
-      // AI玩家，房主控制
-      setTimeout(stepNext, 300);
-    }
-    // 真人玩家会通过状态同步自动触发他们的回合
   }
 }
 
@@ -3207,6 +3225,7 @@ function doKong(pid, tile) {
     }
   } else {
     // 不是当前玩家，继续游戏
+    console.log('doKong: 不是当前玩家，继续游戏, pid:', pid, ', S.turn:', S.turn);
     if (!isOnlineMode) {
       // 单机模式，直接调用 stepNext
       stepNext();
@@ -3217,11 +3236,17 @@ function doKong(pid, tile) {
         return;
       }
       const isAI = !onlinePlayers.some(op => op.seat === pid);
+      console.log('doKong: isAI:', isAI, ', isHost:', isHost, ', pid:', pid);
       if (isAI && isHost) {
         // AI玩家，房主控制
+        console.log('doKong: 调用 stepNext 继续AI玩家回合');
         setTimeout(stepNext, 300);
+      } else if (!isAI) {
+        // 真人玩家会通过状态同步自动触发他们的回合
+        console.log('doKong: 真人玩家，等待状态同步');
+      } else {
+        console.log('doKong: 非房主，等待状态同步');
       }
-      // 真人玩家会通过状态同步自动触发他们的回合
     }
   }
 }
