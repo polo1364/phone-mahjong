@@ -245,6 +245,20 @@ io.on('connection', (socket) => {
       playerName: player.name,
       isHost: player.isHost
     });
+    
+    // 【重要】如果房间有最新的游戏状态，立即广播给其他玩家，确保战况即时更新
+    // 注意：游戏状态应该由客户端通过 gameStateUpdate 更新
+    // 这里只是提醒其他玩家可能需要请求最新状态
+    if (room.gameState) {
+      // 延迟一点，等待客户端更新状态
+      setTimeout(() => {
+        socket.to(roomId).emit('gameStateSync', {
+          gameState: room.gameState,
+          fromPlayer: player.seat,
+          isHost: player.isHost
+        });
+      }, 100);
+    }
   });
   
   // 请求当前回合信息

@@ -4972,6 +4972,30 @@ function draw(p) {
     }
   }
   
+  // 【重要】检查剩余牌数：如果剩余牌数为0且没有王牌，无法摸牌
+  if (S.remain === 0 && S.wall.length === 0 && S.deadWall.length === 0) {
+    console.log('⚠️ draw: 剩余牌数为0，无法摸牌');
+    return;
+  }
+  
+  // 【重要】检查牌山和王牌：如果都没有牌了，无法摸牌
+  if (S.wall.length === 0 && S.deadWall.length === 0) {
+    console.log('⚠️ draw: 牌山和王牌都为空，无法摸牌');
+    // 触发流局
+    if (S.phase !== 'end') {
+      log('🚫 流局 - 牌山枯竭');
+      S.phase = 'end';
+      S.winner = null;
+      speakRandom('drawGame');
+      renderAll();
+      if (isOnlineMode && socket && isHost) {
+        syncGameStateToServer();
+      }
+      setTimeout(() => showHandsAndContinue(), 1000);
+    }
+    return;
+  }
+  
   let t = null;
   
   // 優先從牌山摸牌
@@ -4982,8 +5006,9 @@ function draw(p) {
   else if (S.deadWall.length > 0) {
     t = S.deadWall.pop();
   } 
-  // 如果都沒有牌了，無法摸牌
+  // 如果都沒有牌了，無法摸牌（这个检查应该不会到达，因为上面已经检查过了）
   else {
+    console.error('⚠️ draw: 不应该到达这里，牌山和王牌都为空');
     return;
   }
   
@@ -6727,8 +6752,19 @@ function handleRemoteAction(data) {
       break;
   }
   
-  // 不需要在处理远程操作后同步状态，因为状态来自服务器
-  // 只有本地操作才需要同步状态
+  // 【重要】延迟请求状态同步，确保战况即时更新
+  // 延迟一点时间，等待操作玩家先同步状态到服务器
+  // 因为其他玩家的操作会改变游戏状态（分数、手牌数、剩余牌数等），需要立即同步
+  if (socket && currentRoomId) {
+    setTimeout(() => {
+      socket.emit('getRoomState', currentRoomId, (response) => {
+        if (response.success && response.room && response.room.gameState) {
+          console.log('handleRemoteAction: 请求状态同步，确保战况即时更新');
+          syncGameState(response.room.gameState, playerSeat);
+        }
+      });
+    }, 200); // 延迟200ms，等待操作玩家同步状态
+  }
 }
 
 // 處理遠程出牌
