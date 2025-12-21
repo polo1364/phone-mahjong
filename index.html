@@ -5567,7 +5567,14 @@ function initOnline() {
   });
   
   socket.on('gameStarted', (data) => {
+    console.log('收到 gameStarted 事件:', data);
     log('🎮 遊戲開始！');
+    
+    // 确保 data.status 为 'playing'（即使服务器没有发送）
+    if (!data.status) {
+      data.status = 'playing';
+    }
+    
     // 所有玩家收到 gameStarted 事件时，都应该关闭连线面板并初始化游戏
     // 立即强制关闭连线面板（使用多种方法确保关闭）
     const onlinePanel = document.getElementById('onlinePanel');
@@ -5577,12 +5584,14 @@ function initOnline() {
       // 使用多种方法强制隐藏
       onlinePanel.style.setProperty('display', 'none', 'important');
       onlinePanel.setAttribute('style', 'display: none !important;');
+      onlinePanel.hidden = true;
       // 再次确保（延迟执行，防止CSS覆盖）
       setTimeout(() => {
         if (onlinePanel) {
           onlinePanel.classList.remove('show');
           onlinePanel.style.setProperty('display', 'none', 'important');
           onlinePanel.setAttribute('style', 'display: none !important;');
+          onlinePanel.hidden = true;
         }
       }, 10);
       setTimeout(() => {
@@ -5590,10 +5599,13 @@ function initOnline() {
           onlinePanel.classList.remove('show');
           onlinePanel.style.setProperty('display', 'none', 'important');
           onlinePanel.setAttribute('style', 'display: none !important;');
+          onlinePanel.hidden = true;
         }
       }, 100);
     }
-    startOnlineGame(data);
+    
+    // 直接初始化游戏（不经过 startOnlineGame 的检查逻辑）
+    initOnlineGame(data);
   });
   
   socket.on('gameStateSync', (data) => {
@@ -5669,6 +5681,74 @@ function joinOnlineRoom() {
   });
 }
 
+// 直接初始化游戏（用于 gameStarted 事件，跳过所有检查）
+function initOnlineGame(data) {
+  console.log('initOnlineGame 被调用:', data);
+  
+  // 强制关闭连线面板
+  const onlinePanel = document.getElementById('onlinePanel');
+  if (onlinePanel) {
+    onlinePanel.classList.remove('show');
+    onlinePanel.style.setProperty('display', 'none', 'important');
+    onlinePanel.setAttribute('style', 'display: none !important;');
+    onlinePanel.hidden = true;
+  }
+  
+  // 设置玩家名字（连线模式）
+  if (data.players && data.players.length > 0) {
+    const onlinePlayerNames = data.players.map(p => p.name);
+    const totalPlayers = 4;
+    
+    if (onlinePlayerNames.length < totalPlayers) {
+      const needAI = totalPlayers - onlinePlayerNames.length;
+      const shuffled = [...NAME_POOL].sort(() => Math.random() - 0.5);
+      const aiNames = shuffled.slice(0, needAI);
+      const allNames = [...onlinePlayerNames, ...aiNames];
+      GAME_SETTINGS.playerNames = allNames;
+      log(`🤖 自動補位 ${needAI} 位AI玩家：${aiNames.join('、')}`);
+    } else {
+      GAME_SETTINGS.playerNames = onlinePlayerNames;
+    }
+  }
+  
+  // 确保 mySeat 已正确设置
+  if (mySeat < 0 || mySeat === undefined) {
+    const player = data.players?.find(p => p.id === socket?.id);
+    if (player && typeof player.seat !== 'undefined') {
+      mySeat = player.seat;
+      console.log('设置 mySeat:', mySeat);
+    }
+  }
+  
+  // 确定是否是房主
+  const isHost = data.players?.find(p => p.id === socket?.id)?.isHost || false;
+  
+  // 初始化游戏
+  S = null;
+  dealerStreak = 0;
+  document.getElementById('log').innerHTML = '';
+  
+  startNewHand(true);
+  log('🎮 連線遊戲開始！');
+  
+  // 游戏初始化完成后同步状态
+  setTimeout(() => {
+    if (S && S.round) {
+      if (isHost) {
+        syncGameStateToServer();
+      } else {
+        if (socket && currentRoomId) {
+          socket.emit('getRoomState', currentRoomId, (response) => {
+            if (response.success && response.room && response.room.gameState) {
+              syncGameState(response.room.gameState);
+            }
+          });
+        }
+      }
+    }
+  }, 500);
+}
+
 // 開始遊戲（所有玩家都會收到 gameStarted 事件）
 function startOnlineGame(data) {
   if (!data) {
@@ -5690,12 +5770,14 @@ function startOnlineGame(data) {
     // 使用多种方法强制隐藏
     onlinePanel.style.setProperty('display', 'none', 'important');
     onlinePanel.setAttribute('style', 'display: none !important;');
+    onlinePanel.hidden = true;
     // 再次确保（延迟执行，防止CSS覆盖）
     setTimeout(() => {
       if (onlinePanel) {
         onlinePanel.classList.remove('show');
         onlinePanel.style.setProperty('display', 'none', 'important');
         onlinePanel.setAttribute('style', 'display: none !important;');
+        onlinePanel.hidden = true;
       }
     }, 10);
     setTimeout(() => {
@@ -5703,6 +5785,7 @@ function startOnlineGame(data) {
         onlinePanel.classList.remove('show');
         onlinePanel.style.setProperty('display', 'none', 'important');
         onlinePanel.setAttribute('style', 'display: none !important;');
+        onlinePanel.hidden = true;
       }
     }, 100);
   }
@@ -5710,73 +5793,20 @@ function startOnlineGame(data) {
   // 检查是否是房主，或者游戏状态已经是 playing
   const isHost = data.players.find(p => p.id === socket.id)?.isHost;
   
-  // 如果收到 gameStarted 事件，说明游戏已经开始，所有玩家都应该初始化游戏
-  // 如果状态是 playing，也说明游戏已经开始
-  // 只有当既不是房主，状态也不是 playing，且没有收到 gameStarted 事件时，才等待
-  if (!isHost && data.status !== 'playing') {
-    // 检查是否是通过 gameStarted 事件调用的（通过检查调用栈或添加参数）
-    // 如果是通过 roomState 更新的，且状态不是 playing，则等待
-    log('⏳ 等待房主開始遊戲...');
+  // 如果游戏状态是 playing，直接初始化游戏
+  if (data.status === 'playing') {
+    initOnlineGame(data);
     return;
   }
   
-  // 设置玩家名字（连线模式）
-  if (data.players && data.players.length > 0) {
-    // 使用连线玩家的名字，不足4人时用随机名字补位
-    const onlinePlayerNames = data.players.map(p => p.name);
-    const totalPlayers = 4;
-    
-    // 如果连线玩家不足4人，生成随机名字补位
-    if (onlinePlayerNames.length < totalPlayers) {
-      const needAI = totalPlayers - onlinePlayerNames.length;
-      // 从名字池中随机选择不重复的名字
-      const shuffled = [...NAME_POOL].sort(() => Math.random() - 0.5);
-      const aiNames = shuffled.slice(0, needAI);
-      const allNames = [...onlinePlayerNames, ...aiNames];
-      GAME_SETTINGS.playerNames = allNames;
-      log(`🤖 自動補位 ${needAI} 位AI玩家：${aiNames.join('、')}`);
-    } else {
-      GAME_SETTINGS.playerNames = onlinePlayerNames;
-    }
+  // 如果是房主，直接初始化游戏
+  if (isHost) {
+    initOnlineGame(data);
+    return;
   }
   
-  // 确保在连线模式下，mySeat 已正确设置
-  if (gameMode === 'online' && (mySeat < 0 || mySeat === undefined)) {
-    const player = data.players.find(p => p.id === socket.id);
-    if (player && typeof player.seat !== 'undefined') {
-      mySeat = player.seat;
-      log(`📍 設置座位: ${mySeat}`);
-    }
-  }
-  
-  // 初始化游戏（所有玩家都应该初始化，因为游戏已经开始了）
-  // 当收到 gameStarted 事件时，说明房主已经点击开始，所有玩家都应该初始化
-  S = null;
-  dealerStreak = 0;
-  document.getElementById('log').innerHTML = '';
-  
-  startNewHand(true);
-  log('🎮 連線遊戲開始！');
-  
-  // 游戏初始化完成后，如果是房主，同步游戏状态给其他玩家
-  // 如果不是房主，请求同步游戏状态
-  setTimeout(() => {
-    if (S && S.round) {
-      if (isHost) {
-        // 房主同步游戏状态给其他玩家
-        syncGameStateToServer();
-      } else {
-        // 非房主请求同步游戏状态
-        if (socket && currentRoomId) {
-          socket.emit('getRoomState', currentRoomId, (response) => {
-            if (response.success && response.room && response.room.gameState) {
-              syncGameState(response.room.gameState);
-            }
-          });
-        }
-      }
-    }
-  }, 500);
+  // 其他情况，等待游戏开始（不应该执行到这里，因为 gameStarted 事件会触发 initOnlineGame）
+  log('⏳ 等待房主開始遊戲...');
 }
 
 // 同步遊戲狀態到服務器

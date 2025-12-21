@@ -151,9 +151,12 @@ io.on('connection', (socket) => {
     
     room.status = 'playing';
     
+    console.log(`游戏开始 - 房间: ${roomId}, 玩家数: ${room.players.length}`);
+    
     io.to(roomId).emit('gameStarted', {
       players: room.players,
-      settings: room.settings
+      settings: room.settings,
+      status: 'playing'  // 添加 status 字段
     });
   });
   
