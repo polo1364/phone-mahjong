@@ -2095,22 +2095,49 @@ function startNewHand(isFirstGame = false) {
   S = {
     wall: shuffle(generateTiles()),
     deadWall: [],
-    players: Array.from({ length: 4 }, (_, i) => ({
-      hand: [],
-      discards: [],
-      flowers: [],
-      melds: [],
-      points: prevNames ? S.players[i].points : GAME_SETTINGS.initialPoints,
-      declaredListen: false,
-      waitKeys: [],
-      tianTing: false,
-      diTing: false,
-      isAI: (gameMode === 'online') ? (i !== mySeat) : (i !== 0),
-      rinshan: false,
-      drawCount: 0,
-      tingLocked: false,
-      requiredDiscard: null
-    })),
+    players: Array.from({ length: 4 }, (_, i) => {
+      // 在连线模式下，检查 onlinePlayers 列表来确定是否是AI
+      let isAI = false;
+      if (gameMode === 'online') {
+        // 如果 onlinePlayers 未定义或为空，假设只有自己是真人玩家
+        if (!onlinePlayers || onlinePlayers.length === 0) {
+          isAI = (i !== mySeat);
+          if (isHost) {
+            console.warn('⚠️ startNewHand: onlinePlayers 未定義，座位', i, '設為AI:', isAI);
+          }
+        } else {
+          // 检查座位 i 是否在 onlinePlayers 列表中
+          isAI = !onlinePlayers.some(p => p.seat === i);
+        }
+      } else {
+        // 单机模式：只有座位0是真人玩家
+        isAI = (i !== 0);
+      }
+      
+      // 调试日志（仅连线模式且是房主时）
+      if (gameMode === 'online' && isHost && i === 0) {
+        console.log('=== AI替补检查 ===');
+        console.log('座位', i, '- onlinePlayers:', onlinePlayers?.map(p => ({seat: p.seat, name: p.name})) || '未定义');
+        console.log('座位', i, '- isAI:', isAI);
+      }
+      
+      return {
+        hand: [],
+        discards: [],
+        flowers: [],
+        melds: [],
+        points: prevNames ? S.players[i].points : GAME_SETTINGS.initialPoints,
+        declaredListen: false,
+        waitKeys: [],
+        tianTing: false,
+        diTing: false,
+        isAI: isAI,
+        rinshan: false,
+        drawCount: 0,
+        tingLocked: false,
+        requiredDiscard: null
+      };
+    }),
     kongCount: 0,
     rules: clone(RULES),
     turn: newDealer,
