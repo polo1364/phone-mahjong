@@ -6420,10 +6420,33 @@ function syncGameState(gameState, fromPlayerSeat) {
         console.log('已有 drawnTile，等待出牌');
         log('👉 輪到你了，請出牌');
       }
-    } else if (S.waitReact && S.waitReact.some(r => r.pid === myPSeatSync)) {
+    } else if (S.waitReact && S.waitReact.length > 0) {
       // 有反應可選
-      console.log('有反應可選');
-      showReactionPanel(S.waitReact.filter(r => r.pid === myPSeatSync));
+      const myReactions = S.waitReact.filter(r => r.pid === myPSeatSync);
+      if (myReactions.length > 0) {
+        // 当前玩家有反应
+        console.log('有反應可選');
+        showReactionPanel(myReactions);
+      } else if (isOnlineMode && isHost) {
+        // 当前玩家没有反应，检查是否有AI玩家可以反应
+        if (!onlinePlayers || onlinePlayers.length === 0) {
+          console.error('❌ syncGameState: onlinePlayers 未定義或為空！');
+          return;
+        }
+        // 检查是否有AI玩家可以反应
+        const aiReactions = S.waitReact.filter(r => {
+          const isRealPlayer = onlinePlayers.some(p => p.seat === r.pid);
+          return !isRealPlayer;
+        });
+        if (aiReactions.length > 0) {
+          // 有AI玩家可以反应，房主处理
+          console.log('syncGameState: 有AI玩家可以反应，调用 handleAIReaction');
+          setTimeout(() => handleAIReaction(S.waitReact), 1000 + Math.random() * 1000);
+        } else {
+          // 只有真人玩家可以反应，等待他们操作
+          console.log('syncGameState: 只有真人玩家可以反应，等待他们操作');
+        }
+      }
     } else if (isProcessingStep) {
       console.log('⚠️ syncGameState: stepNext 正在处理中，跳过触发');
     } else if (S.turn !== myPSeatSync && S.phase !== 'end' && isOnlineMode && isHost) {
