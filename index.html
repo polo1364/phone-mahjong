@@ -5594,22 +5594,29 @@ function showHandsAndContinue() {
   document.getElementById('btnContinueNext').onclick = () => {
     if (isOnlineMode && socket && currentRoomId) {
       // 连线模式：发送准备状态
+      console.log('点击继续下一局按钮, mySeat:', mySeat, ', isHost:', isHost);
       socket.emit('playerReady', { roomId: currentRoomId, seat: mySeat });
       
-      // 更新本地准备状态
+      // 更新本地准备状态（立即更新，不等待服务器响应）
       readyPlayers.add(mySeat);
+      console.log('本地准备状态已更新, readyPlayers:', Array.from(readyPlayers));
       
-      // 更新UI
+      // 立即更新UI（不等待服务器响应）
       updateReadyStatus();
       
       // 检查是否所有玩家都准备好了
       if (readyPlayers.size >= onlinePlayers.length) {
+        console.log('所有玩家都准备好了，准备开始新局');
         // 所有玩家都准备好了，开始新局
         if (isHost) {
           // 房主负责开始新局
           setTimeout(() => {
             overlay.classList.remove('show');
             readyPlayers.clear(); // 清空准备状态
+            if (continueModalTimeout) {
+              clearTimeout(continueModalTimeout);
+              continueModalTimeout = null;
+            }
             log('—— 開下一局 ——');
             startNewHand();
           }, 500);
@@ -5639,20 +5646,27 @@ function showHandsAndContinue() {
     const currentContent = document.getElementById('modalContent');
     if (!currentContent) return;
     
+    console.log('updateReadyStatus: readyPlayers=', Array.from(readyPlayers), ', onlinePlayers=', onlinePlayers.map(p => p.seat));
+    
     onlinePlayers.forEach(player => {
       const isReady = readyPlayers.has(player.seat);
       const playerName = S.names && S.names[player.seat] ? S.names[player.seat] : `玩家${player.seat}`;
       const statusIcon = isReady ? '✅' : '⏳';
       const statusText = isReady ? '已準備' : '等待中';
       
-      // 查找包含该玩家名称的div
+      console.log(`updateReadyStatus: 玩家 ${player.seat} (${playerName}) - isReady=${isReady}`);
+      
+      // 查找包含该玩家名称的div（更精确的查找）
       const allDivs = currentContent.querySelectorAll('div');
       for (const div of allDivs) {
-        if (div.textContent.includes(playerName)) {
+        // 检查div是否包含玩家名称和状态文本
+        const divText = div.textContent || '';
+        if (divText.includes(playerName) && (divText.includes('已準備') || divText.includes('等待中'))) {
           const statusSpan = div.querySelector('span:last-child');
-          if (statusSpan && (statusSpan.textContent.includes('已準備') || statusSpan.textContent.includes('等待中'))) {
+          if (statusSpan) {
             statusSpan.innerHTML = `${statusIcon} ${statusText}`;
             statusSpan.style.color = isReady ? 'var(--accent-jade)' : 'var(--text-secondary)';
+            console.log(`updateReadyStatus: 更新玩家 ${player.seat} 的状态为 ${statusText}`);
             break;
           }
         }
@@ -5662,9 +5676,13 @@ function showHandsAndContinue() {
     // 更新等待提示
     const waitTexts = currentContent.querySelectorAll('div');
     for (const div of waitTexts) {
-      if (div.textContent.includes('等待所有玩家準備')) {
+      const divText = div.textContent || '';
+      if (divText.includes('等待所有玩家準備')) {
         if (readyPlayers.size < onlinePlayers.length) {
           div.textContent = `等待所有玩家準備... (${readyPlayers.size}/${onlinePlayers.length})`;
+        } else {
+          div.textContent = `所有玩家都已準備！`;
+          div.style.color = 'var(--accent-jade)';
         }
         break;
       }
@@ -6307,14 +6325,26 @@ function initOnline() {
   
   // 处理所有玩家都准备好的通知
   socket.on('allPlayersReady', (data) => {
-    console.log('所有玩家都准备好了');
-    if (isOnlineMode && !isHost) {
-      // 非房主收到通知后，等待房主开始新局
+    console.log('所有玩家都准备好了, isHost:', isHost);
+    if (isOnlineMode) {
       const overlay = document.getElementById('modalOverlay');
       if (overlay && overlay.classList.contains('show')) {
-        overlay.classList.remove('show');
-        readyPlayers.clear(); // 清空准备状态
-        log('⏳ 等待房主開始新局...');
+        if (isHost) {
+          // 房主收到通知后，开始新局
+          overlay.classList.remove('show');
+          readyPlayers.clear(); // 清空准备状态
+          if (continueModalTimeout) {
+            clearTimeout(continueModalTimeout);
+            continueModalTimeout = null;
+          }
+          log('—— 開下一局 ——');
+          startNewHand();
+        } else {
+          // 非房主收到通知后，等待房主开始新局
+          overlay.classList.remove('show');
+          readyPlayers.clear(); // 清空准备状态
+          log('⏳ 等待房主開始新局...');
+        }
       }
     }
   });
@@ -6630,12 +6660,14 @@ function syncGameState(gameState, fromPlayerSeat) {
       if (tileInHand) {
         // 使用手牌中的实际对象引用
         S.players[myPSeatSync].drawnTile = tileInHand;
-        console.log('恢复 drawnTile:', drawnKey);
+        console.log('恢复 drawnTile:', drawnKey, ', 手牌数:', S.players[myPSeatSync].hand.length);
       } else {
-        // 如果手牌中没有（不应该发生），使用保留的对象
-        S.players[myPSeatSync].drawnTile = preserveDrawnTile;
-        S.players[myPSeatSync].hand.push(preserveDrawnTile);
-        console.log('恢复 drawnTile（添加到手牌）:', drawnKey);
+        // 如果手牌中没有，检查是否应该在手牌中
+        // 如果同步的状态来自其他玩家，可能不包含当前玩家的 drawnTile
+        // 这种情况下，不应该添加，因为状态可能不同步
+        console.warn('⚠️ syncGameState: 手牌中找不到 drawnTile:', drawnKey, ', 手牌数:', S.players[myPSeatSync].hand.length, ', 不添加以避免手牌数量错误');
+        // 不添加 drawnTile，等待下次状态同步
+        S.players[myPSeatSync].drawnTile = null;
       }
     }
     
@@ -6650,6 +6682,46 @@ function syncGameState(gameState, fromPlayerSeat) {
     }
     
     console.log('游戏状态同步完成, 当前回合:', S.turn, ', 莊家:', S.dealer, ', mySeat:', myPSeatSync);
+    
+    // 【重要】验证所有玩家的手牌数量是否正确
+    for (let i = 0; i < 4; i++) {
+      const player = S.players[i];
+      if (!player) continue;
+      
+      const kongCount = countKongs(player);
+      const meldCount = player.melds.length;
+      const meldTilesCount = player.melds.reduce((sum, m) => sum + m.tiles.length, 0);
+      const actualHandSize = player.hand.length;
+      const totalTiles = actualHandSize + meldTilesCount;
+      
+      // 计算期望的手牌数量
+      // 16张麻将：每个副露（吃/碰/杠）占用3或4张牌，但手牌中只保留1张（副露的牌不在手牌中）
+      // 庄家开局：17张手牌，之后每次摸牌后16张
+      // 闲家开局：16张手牌，之后每次摸牌后15张
+      const isDealer = S.dealer === i;
+      
+      // 基础手牌数：庄家17张，闲家16张（开局时）
+      // 如果有摸牌记录，说明已经摸过牌，应该是：庄家16张，闲家15张
+      const hasDrawn = player.drawCount > 0 || player.drawnTile !== null;
+      const baseHandSize = isDealer ? (hasDrawn ? 16 : 17) : (hasDrawn ? 15 : 16);
+      
+      // 每个副露会减少手牌数：吃/碰减少2张，杠减少3张（因为副露的牌不在手牌中）
+      // 但实际上，每个副露只减少1张手牌（因为副露的牌被移出手牌）
+      const expectedHandSize = baseHandSize - meldCount;
+      
+      // 如果有摸到的牌，手牌数应该+1
+      const expectedHandSizeWithDrawn = player.drawnTile ? expectedHandSize + 1 : expectedHandSize;
+      
+      // 验证手牌数量（允许1张的误差，因为可能有drawnTile或状态同步延迟）
+      const minHandSize = expectedHandSize - 1;
+      const maxHandSize = expectedHandSizeWithDrawn + 1;
+      
+      if (actualHandSize < minHandSize || actualHandSize > maxHandSize) {
+        console.warn(`⚠️ 玩家 ${i} (${playerName(i)}) 手牌数量异常: 手牌数=${actualHandSize}, 期望=${expectedHandSize}~${expectedHandSizeWithDrawn}, 副露数=${meldCount}, 副露牌数=${meldTilesCount}, 杠数=${kongCount}, drawnTile=${player.drawnTile ? 'yes' : 'no'}, drawCount=${player.drawCount}, isDealer=${isDealer}`);
+      } else {
+        console.log(`✓ 玩家 ${i} (${playerName(i)}) 手牌数量正常: 手牌数=${actualHandSize}, 期望=${expectedHandSize}~${expectedHandSizeWithDrawn}, 副露数=${meldCount}`);
+      }
+    }
     
     // 强制重新渲染
     renderAll();

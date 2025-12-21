@@ -281,6 +281,44 @@ io.on('connection', (socket) => {
     }
   });
   
+  // 玩家准备继续下一局
+  socket.on('playerReady', (data) => {
+    const { roomId, seat } = data;
+    const room = rooms.get(roomId);
+    if (!room) return;
+    
+    const player = room.players.find(p => p.id === socket.id);
+    if (!player) return;
+    
+    // 初始化准备状态（如果不存在）
+    if (!room.readyPlayers) {
+      room.readyPlayers = new Set();
+    }
+    
+    // 添加玩家到准备列表
+    room.readyPlayers.add(seat);
+    
+    console.log(`玩家准备 - 房间: ${roomId}, 玩家: ${player.name}, 座位: ${seat}, 已准备: ${room.readyPlayers.size}/${room.players.length}`);
+    
+    // 广播准备状态给所有玩家
+    io.to(roomId).emit('playerReady', {
+      seat: seat,
+      readyCount: room.readyPlayers.size,
+      totalPlayers: room.players.length
+    });
+    
+    // 检查是否所有玩家都准备好了
+    if (room.readyPlayers.size >= room.players.length) {
+      console.log(`所有玩家都准备好了 - 房间: ${roomId}`);
+      // 清空准备状态
+      room.readyPlayers.clear();
+      // 通知所有玩家可以开始新局
+      io.to(roomId).emit('allPlayersReady', {
+        roomId: roomId
+      });
+    }
+  });
+  
   // 请求当前回合信息
   socket.on('requestTurnInfo', (roomId, callback) => {
     const room = rooms.get(roomId);
