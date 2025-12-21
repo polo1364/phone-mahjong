@@ -5661,7 +5661,7 @@ function initOnline() {
   
   socket.on('gameStateSync', (data) => {
     if (data.fromPlayer !== mySeat && isOnlineMode) {
-      syncGameState(data.gameState);
+      syncGameState(data.gameState, data.fromPlayer);
     }
   });
   
@@ -5830,7 +5830,7 @@ function initOnlineGame(data) {
         socket.emit('getRoomState', currentRoomId, (response) => {
           if (response.success && response.room && response.room.gameState) {
             console.log('收到游戏状态:', response.room.gameState);
-            syncGameState(response.room.gameState);
+            syncGameState(response.room.gameState, null);
             renderAll();
           } else {
             // 继续重试
@@ -5897,7 +5897,7 @@ function syncGameStateToServer() {
 }
 
 // 從服務器同步遊戲狀態
-function syncGameState(gameState) {
+function syncGameState(gameState, fromPlayerSeat) {
   if (!isOnlineMode) return;
   
   if (!gameState || !gameState.round) {
@@ -5905,18 +5905,40 @@ function syncGameState(gameState) {
     return;
   }
   
-  // 如果当前玩家正在操作（有 drawnTile），不要覆盖状态
   const myPSeatSync = getMyPlayerSeat();
+  
+  // 如果当前玩家有 drawnTile，且状态来自其他玩家，保留本地 drawnTile
+  let preserveDrawnTile = null;
   if (S && S.players && S.players[myPSeatSync] && S.players[myPSeatSync].drawnTile) {
-    console.log('⚠️ syncGameState: 当前玩家有 drawnTile，跳过同步以避免覆盖');
-    return;
+    // 如果状态来自其他玩家（或未知），且当前玩家有 drawnTile，保留它
+    if (fromPlayerSeat === null || fromPlayerSeat === undefined || fromPlayerSeat !== myPSeatSync) {
+      preserveDrawnTile = S.players[myPSeatSync].drawnTile;
+      console.log('⚠️ syncGameState: 当前玩家有 drawnTile，保留本地状态:', tileKey(preserveDrawnTile), ', fromPlayer:', fromPlayerSeat);
+    }
   }
   
-  console.log('同步游戏状态:', gameState);
+  console.log('同步游戏状态:', gameState, ', fromPlayer:', fromPlayerSeat);
   
   // 深拷贝游戏状态
   try {
     S = JSON.parse(JSON.stringify(gameState));
+    
+    // 如果保留了 drawnTile，恢复它
+    if (preserveDrawnTile && S.players[myPSeatSync]) {
+      const drawnKey = tileKey(preserveDrawnTile);
+      // 在手牌中找到对应的牌（使用 tileKey 匹配，因为对象引用可能不同）
+      const tileInHand = S.players[myPSeatSync].hand.find(t => tileKey(t) === drawnKey);
+      if (tileInHand) {
+        // 使用手牌中的实际对象引用
+        S.players[myPSeatSync].drawnTile = tileInHand;
+        console.log('恢复 drawnTile:', drawnKey);
+      } else {
+        // 如果手牌中没有（不应该发生），使用保留的对象
+        S.players[myPSeatSync].drawnTile = preserveDrawnTile;
+        S.players[myPSeatSync].hand.push(preserveDrawnTile);
+        console.log('恢复 drawnTile（添加到手牌）:', drawnKey);
+      }
+    }
     
     // 同步其他全局变量
     if (gameState.dealerStreak !== undefined) {
@@ -5973,7 +5995,7 @@ function handleRemoteAction(data) {
     if (socket && currentRoomId) {
       socket.emit('getRoomState', currentRoomId, (response) => {
         if (response.success && response.room && response.room.gameState) {
-          syncGameState(response.room.gameState);
+          syncGameState(response.room.gameState, null);
           // 同步后重新处理操作
           setTimeout(() => {
             handleRemoteAction(data);
@@ -6035,7 +6057,7 @@ function handleRemoteDiscard(playerSeat, tileKeyStr) {
     if (socket && currentRoomId) {
       socket.emit('getRoomState', currentRoomId, (response) => {
         if (response.success && response.room && response.room.gameState) {
-          syncGameState(response.room.gameState);
+          syncGameState(response.room.gameState, null);
         }
       });
     }
@@ -6092,7 +6114,7 @@ function handleRemoteDraw(playerSeat) {
   if (socket && currentRoomId) {
     socket.emit('getRoomState', currentRoomId, (response) => {
       if (response.success && response.room && response.room.gameState) {
-        syncGameState(response.room.gameState);
+        syncGameState(response.room.gameState, null);
       }
     });
   }
