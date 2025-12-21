@@ -2748,6 +2748,28 @@ function doChow(pid, tile, pattern) {
       syncGameStateToServer();
     }
   }
+  
+  // 继续游戏：判断下一个玩家
+  const myPSeat = getMyPlayerSeat();
+  if (pid === myPSeat) {
+    // 轮到自己，等待出牌
+    log('👉 輪到你了，請出牌');
+  } else if (!isOnlineMode) {
+    // 单机模式，直接调用 stepNext
+    stepNext();
+  } else {
+    // 连线模式，判断是否是AI
+    if (!onlinePlayers || onlinePlayers.length === 0) {
+      console.error('❌ doChow: onlinePlayers 未定義或為空！');
+      return;
+    }
+    const isAI = !onlinePlayers.some(op => op.seat === pid);
+    if (isAI && isHost) {
+      // AI玩家，房主控制
+      setTimeout(stepNext, 300);
+    }
+    // 真人玩家会通过状态同步自动触发他们的回合
+  }
 }
 
 function canPong(pid, tile) {
@@ -3077,6 +3099,28 @@ function doPong(pid, tile) {
       syncGameStateToServer();
     }
   }
+  
+  // 继续游戏：判断下一个玩家
+  const myPSeat = getMyPlayerSeat();
+  if (pid === myPSeat) {
+    // 轮到自己，等待出牌
+    log('👉 輪到你了，請出牌');
+  } else if (!isOnlineMode) {
+    // 单机模式，直接调用 stepNext
+    stepNext();
+  } else {
+    // 连线模式，判断是否是AI
+    if (!onlinePlayers || onlinePlayers.length === 0) {
+      console.error('❌ doPong: onlinePlayers 未定義或為空！');
+      return;
+    }
+    const isAI = !onlinePlayers.some(op => op.seat === pid);
+    if (isAI && isHost) {
+      // AI玩家，房主控制
+      setTimeout(stepNext, 300);
+    }
+    // 真人玩家会通过状态同步自动触发他们的回合
+  }
 }
 
 function doKong(pid, tile) {
@@ -3160,6 +3204,24 @@ function doKong(pid, tile) {
         });
         if (canListenNow) showListenPanel();
       }
+    }
+  } else {
+    // 不是当前玩家，继续游戏
+    if (!isOnlineMode) {
+      // 单机模式，直接调用 stepNext
+      stepNext();
+    } else {
+      // 连线模式，判断是否是AI
+      if (!onlinePlayers || onlinePlayers.length === 0) {
+        console.error('❌ doKong: onlinePlayers 未定義或為空！');
+        return;
+      }
+      const isAI = !onlinePlayers.some(op => op.seat === pid);
+      if (isAI && isHost) {
+        // AI玩家，房主控制
+        setTimeout(stepNext, 300);
+      }
+      // 真人玩家会通过状态同步自动触发他们的回合
     }
   }
 }
@@ -3669,7 +3731,7 @@ function handleAIReaction(reactions) {
     }
     if (Math.random() < kongChance) {
       doKong(kongReact.pid, kongReact.tile);
-      setTimeout(stepAI, 1000 + Math.random() * 1000);
+      // doKong 函数会在结尾调用 stepNext，不需要这里再调用
       return;
     }
     // 如果AI選擇不槓，也不執行碰（同一回合只能擇一）
@@ -3693,7 +3755,7 @@ function handleAIReaction(reactions) {
     }
     if (Math.random() < pongChance) {
     doPong(pongReact.pid, pongReact.tile);
-    setTimeout(stepAI, 1000 + Math.random() * 1000);
+    // doPong 函数会在结尾调用 stepNext，不需要这里再调用
     return;
     }
   }
@@ -3727,13 +3789,13 @@ function handleAIReaction(reactions) {
       if (shAfter === 0) chowChance += 0.2; // 如果能聽牌，提高機率
       if (Math.random() < chowChance) {
         doChow(chowReact.pid, chowReact.tile, pattern);
-        setTimeout(stepAI, 1000 + Math.random() * 1000);
+        // doChow 函数会在结尾调用 stepNext，不需要这里再调用
         return;
       }
     } else if (shAfter === shBefore && Math.random() < 0.25) {
       // 即使不改善向聽數，也有小機率吃（為了改變牌型）
       doChow(chowReact.pid, chowReact.tile, pattern);
-      setTimeout(stepAI, 1000 + Math.random() * 1000);
+      // doChow 函数会在结尾调用 stepNext，不需要这里再调用
       return;
     }
   }
