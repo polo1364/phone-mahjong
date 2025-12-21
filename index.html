@@ -5483,10 +5483,12 @@ function startOnlineMode() {
     }, 300);
   }
   initAudio();
-  // 显示连线面板
+  // 显示连线面板（使用 show 类，而不是 inline style）
   const onlinePanel = document.getElementById('onlinePanel');
   if (onlinePanel) {
-    onlinePanel.style.display = 'flex';
+    onlinePanel.style.display = '';  // 清除 inline style
+    onlinePanel.classList.add('show');  // 使用 show 类来显示
+    onlinePanel.hidden = false;
     if (!socket || !socket.connected) {
       initOnline();
     }
@@ -5499,6 +5501,35 @@ let currentRoomId = null;
 let mySeat = -1;
 let isOnlineMode = false;
 let onlinePlayers = [];
+
+// 关闭连线面板的可靠函数
+function closeOnlinePanel() {
+  const onlinePanel = document.getElementById('onlinePanel');
+  if (onlinePanel) {
+    console.log('关闭连线面板');
+    // 移除 show 类
+    onlinePanel.classList.remove('show');
+    // 设置 hidden 属性
+    onlinePanel.hidden = true;
+    // 清除所有可能的 display 样式
+    onlinePanel.style.cssText = 'display: none !important;';
+    // 延迟再次确认关闭
+    setTimeout(() => {
+      if (onlinePanel) {
+        onlinePanel.classList.remove('show');
+        onlinePanel.hidden = true;
+        onlinePanel.style.cssText = 'display: none !important;';
+      }
+    }, 50);
+    setTimeout(() => {
+      if (onlinePanel) {
+        onlinePanel.classList.remove('show');
+        onlinePanel.hidden = true;
+        onlinePanel.style.cssText = 'display: none !important;';
+      }
+    }, 200);
+  }
+}
 
 // 初始化連線
 function initOnline() {
@@ -5553,15 +5584,7 @@ function initOnline() {
     }
     if (data.status === 'playing' && !S) {
       // 如果游戏状态是 playing 且游戏还没初始化，说明游戏已经开始了
-      // 强制关闭连线面板（所有玩家都需要关闭）
-      setTimeout(() => {
-        const onlinePanel = document.getElementById('onlinePanel');
-        if (onlinePanel) {
-          onlinePanel.classList.remove('show');
-          onlinePanel.style.setProperty('display', 'none', 'important');
-          onlinePanel.setAttribute('style', 'display: none !important;');
-        }
-      }, 0);
+      closeOnlinePanel();
       startOnlineGame(data);
     }
   });
@@ -5575,34 +5598,8 @@ function initOnline() {
       data.status = 'playing';
     }
     
-    // 所有玩家收到 gameStarted 事件时，都应该关闭连线面板并初始化游戏
-    // 立即强制关闭连线面板（使用多种方法确保关闭）
-    const onlinePanel = document.getElementById('onlinePanel');
-    if (onlinePanel) {
-      // 立即移除 show 类
-      onlinePanel.classList.remove('show');
-      // 使用多种方法强制隐藏
-      onlinePanel.style.setProperty('display', 'none', 'important');
-      onlinePanel.setAttribute('style', 'display: none !important;');
-      onlinePanel.hidden = true;
-      // 再次确保（延迟执行，防止CSS覆盖）
-      setTimeout(() => {
-        if (onlinePanel) {
-          onlinePanel.classList.remove('show');
-          onlinePanel.style.setProperty('display', 'none', 'important');
-          onlinePanel.setAttribute('style', 'display: none !important;');
-          onlinePanel.hidden = true;
-        }
-      }, 10);
-      setTimeout(() => {
-        if (onlinePanel) {
-          onlinePanel.classList.remove('show');
-          onlinePanel.style.setProperty('display', 'none', 'important');
-          onlinePanel.setAttribute('style', 'display: none !important;');
-          onlinePanel.hidden = true;
-        }
-      }, 100);
-    }
+    // 关闭连线面板
+    closeOnlinePanel();
     
     // 直接初始化游戏（不经过 startOnlineGame 的检查逻辑）
     initOnlineGame(data);
@@ -5685,13 +5682,18 @@ function joinOnlineRoom() {
 function initOnlineGame(data) {
   console.log('initOnlineGame 被调用:', data);
   
+  // 【重要】设置连线模式标志
+  isOnlineMode = true;
+  gameMode = 'online';
+  
   // 强制关闭连线面板
-  const onlinePanel = document.getElementById('onlinePanel');
-  if (onlinePanel) {
-    onlinePanel.classList.remove('show');
-    onlinePanel.style.setProperty('display', 'none', 'important');
-    onlinePanel.setAttribute('style', 'display: none !important;');
-    onlinePanel.hidden = true;
+  closeOnlinePanel();
+  
+  // 隐藏模式选择面板（如果还显示的话）
+  const modePanel = document.getElementById('modeSelectPanel');
+  if (modePanel) {
+    modePanel.classList.remove('show');
+    modePanel.style.cssText = 'display: none !important;';
   }
   
   // 设置玩家名字（连线模式）
@@ -5716,12 +5718,13 @@ function initOnlineGame(data) {
     const player = data.players?.find(p => p.id === socket?.id);
     if (player && typeof player.seat !== 'undefined') {
       mySeat = player.seat;
-      console.log('设置 mySeat:', mySeat);
     }
   }
+  console.log('当前座位 mySeat:', mySeat, ', isOnlineMode:', isOnlineMode);
   
   // 确定是否是房主
   const isHost = data.players?.find(p => p.id === socket?.id)?.isHost || false;
+  console.log('是否是房主:', isHost);
   
   // 初始化游戏
   S = null;
@@ -5730,13 +5733,16 @@ function initOnlineGame(data) {
   
   startNewHand(true);
   log('🎮 連線遊戲開始！');
+  log(`📍 你的座位: ${mySeat}, 連線模式: ${isOnlineMode}`);
   
   // 游戏初始化完成后同步状态
   setTimeout(() => {
     if (S && S.round) {
       if (isHost) {
+        console.log('房主同步游戏状态...');
         syncGameStateToServer();
       } else {
+        console.log('非房主请求游戏状态...');
         if (socket && currentRoomId) {
           socket.emit('getRoomState', currentRoomId, (response) => {
             if (response.success && response.room && response.room.gameState) {
@@ -5752,46 +5758,18 @@ function initOnlineGame(data) {
 // 開始遊戲（所有玩家都會收到 gameStarted 事件）
 function startOnlineGame(data) {
   if (!data) {
-    // 如果是房主手动点击开始游戏按钮
-    socket.emit('getRoomState', currentRoomId, (response) => {
-      if (response.success) {
-        startOnlineGame(response.room);
-      }
-    });
+    // 如果是房主手动点击开始游戏按钮，发送 startGame 事件
+    if (socket && currentRoomId) {
+      socket.emit('startGame', currentRoomId);
+    }
     return;
   }
   
-  // 关闭连线面板（所有玩家都需要关闭，无论是否是房主）
-  // 强制关闭，确保面板隐藏（移除 show 类并设置 display: none）
-  const onlinePanel = document.getElementById('onlinePanel');
-  if (onlinePanel) {
-    // 立即移除 show 类
-    onlinePanel.classList.remove('show');
-    // 使用多种方法强制隐藏
-    onlinePanel.style.setProperty('display', 'none', 'important');
-    onlinePanel.setAttribute('style', 'display: none !important;');
-    onlinePanel.hidden = true;
-    // 再次确保（延迟执行，防止CSS覆盖）
-    setTimeout(() => {
-      if (onlinePanel) {
-        onlinePanel.classList.remove('show');
-        onlinePanel.style.setProperty('display', 'none', 'important');
-        onlinePanel.setAttribute('style', 'display: none !important;');
-        onlinePanel.hidden = true;
-      }
-    }, 10);
-    setTimeout(() => {
-      if (onlinePanel) {
-        onlinePanel.classList.remove('show');
-        onlinePanel.style.setProperty('display', 'none', 'important');
-        onlinePanel.setAttribute('style', 'display: none !important;');
-        onlinePanel.hidden = true;
-      }
-    }, 100);
-  }
+  // 关闭连线面板
+  closeOnlinePanel();
   
   // 检查是否是房主，或者游戏状态已经是 playing
-  const isHost = data.players.find(p => p.id === socket.id)?.isHost;
+  const isHost = data.players?.find(p => p.id === socket?.id)?.isHost;
   
   // 如果游戏状态是 playing，直接初始化游戏
   if (data.status === 'playing') {
@@ -5900,13 +5878,33 @@ function handleRemoteAction(data) {
 }
 
 // 處理遠程出牌
-function handleRemoteDiscard(playerSeat, tileKey) {
+function handleRemoteDiscard(playerSeat, tileKeyStr) {
   if (!S || !S.round || !S.players[playerSeat]) {
     console.warn('⚠️ handleRemoteDiscard: 游戏状态未初始化，等待同步');
     return;
   }
-  const tileObj = keyToTileFromKey(tileKey);
-  renderAll();
+  
+  // 在玩家手牌中找到对应的牌
+  const player = S.players[playerSeat];
+  const tileInHand = player.hand.find(t => tileKey(t) === tileKeyStr);
+  
+  if (tileInHand) {
+    // 直接调用 discard 函数（不会再次发送 sendPlayerAction，因为 playerSeat !== mySeat）
+    discard(playerSeat, tileInHand);
+  } else if (player.drawnTile && tileKey(player.drawnTile) === tileKeyStr) {
+    // 如果是刚摸的牌
+    discard(playerSeat, player.drawnTile);
+  } else {
+    console.warn('⚠️ handleRemoteDiscard: 找不到对应的牌', tileKeyStr);
+    // 尝试同步游戏状态
+    if (socket && currentRoomId) {
+      socket.emit('getRoomState', currentRoomId, (response) => {
+        if (response.success && response.room && response.room.gameState) {
+          syncGameState(response.room.gameState);
+        }
+      });
+    }
+  }
 }
 
 // 處理遠程碰
@@ -5952,7 +5950,17 @@ function handleRemoteDraw(playerSeat) {
     console.warn('⚠️ handleRemoteDraw: 游戏状态未初始化，等待同步');
     return;
   }
-  renderAll();
+  
+  // 远程玩家摸牌时，我们依赖状态同步来更新
+  // 因为我们无法从本地牌墙摸牌给远程玩家
+  // 直接请求状态同步
+  if (socket && currentRoomId) {
+    socket.emit('getRoomState', currentRoomId, (response) => {
+      if (response.success && response.room && response.room.gameState) {
+        syncGameState(response.room.gameState);
+      }
+    });
+  }
 }
 
 // 更新房間玩家列表
