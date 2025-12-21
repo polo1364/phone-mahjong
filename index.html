@@ -5519,6 +5519,13 @@ function initOnline() {
       startBtn.style.display = (isHost && data.players.length >= 2 && data.status === 'waiting') ? 'block' : 'none';
     }
     if (data.status === 'playing' && !S) {
+      // 如果游戏状态是 playing 且游戏还没初始化，说明游戏已经开始了
+      // 关闭连线面板
+      const onlinePanel = document.getElementById('onlinePanel');
+      if (onlinePanel) {
+        onlinePanel.style.display = 'none';
+        onlinePanel.classList.remove('show');
+      }
       startOnlineGame(data);
     }
   });
@@ -5526,6 +5533,12 @@ function initOnline() {
   socket.on('gameStarted', (data) => {
     log('🎮 遊戲開始！');
     // 所有玩家收到 gameStarted 事件时，都应该关闭连线面板并初始化游戏
+    // 立即强制关闭连线面板
+    const onlinePanel = document.getElementById('onlinePanel');
+    if (onlinePanel) {
+      onlinePanel.style.display = 'none';
+      onlinePanel.classList.remove('show');
+    }
     startOnlineGame(data);
   });
   
@@ -5611,10 +5624,12 @@ function startOnlineGame(data) {
   }
   
   // 关闭连线面板（所有玩家都需要关闭，无论是否是房主）
-  // 注意：如果是从 gameStarted 事件调用的，面板已经在事件处理中关闭了
+  // 强制关闭，确保面板隐藏（移除 show 类并设置 display: none）
   const onlinePanel = document.getElementById('onlinePanel');
-  if (onlinePanel && onlinePanel.style.display !== 'none') {
+  if (onlinePanel) {
+    onlinePanel.classList.remove('show');
     onlinePanel.style.display = 'none';
+    onlinePanel.style.setProperty('display', 'none', 'important');
   }
   
   // 检查是否是房主，或者游戏状态已经是 playing
