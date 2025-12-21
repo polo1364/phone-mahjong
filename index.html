@@ -2139,7 +2139,8 @@ function startNewHand(isFirstGame = false) {
   S.names = randomNames ? randomNames.slice() : (prevNames ? prevNames.slice() : []);
   dealTiles();
   S.phase = 'play';
-  S.remain = S.wall.length + S.deadWall.length;
+  // 剩余牌数 = 实际可供摸打的牌数（不包括王牌）
+  S.remain = S.wall.length;
   renderAll();
   
   const dealerWind = seatNames?.[S.dealer] || ['東', '南', '西', '北'][S.dealer];
@@ -2829,7 +2830,8 @@ function doConcealedKong(pid, key) {
     pl.hand.push(newTile); // 先加入手牌
     pl.drawnTile = newTile; // 設置為drawnTile，會顯示在最右邊
   }
-  S.remain = S.wall.length + S.deadWall.length;
+  // 剩余牌数 = 实际可供摸打的牌数（不包括王牌）
+  S.remain = S.wall.length;
   renderAll();
   
   const t = pl.drawnTile || pl.hand[pl.hand.length - 1];
@@ -2943,7 +2945,8 @@ function doAddedKong(pid, meldIndex) {
     pl.hand.push(newTile); // 先加入手牌
     pl.drawnTile = newTile; // 設置為drawnTile，會顯示在最右邊
   }
-  S.remain = S.wall.length + S.deadWall.length;
+  // 剩余牌数 = 实际可供摸打的牌数（不包括王牌）
+  S.remain = S.wall.length;
   pl.rinshan = true;
   renderAll();
   
@@ -3090,7 +3093,8 @@ function doKong(pid, tile) {
     pl.hand.push(newTile); // 先加入手牌
     pl.drawnTile = newTile; // 設置為drawnTile，會顯示在最右邊
   }
-  S.remain = S.wall.length + S.deadWall.length;
+  // 剩余牌数 = 实际可供摸打的牌数（不包括王牌）
+  S.remain = S.wall.length;
   S.lastAction = 'kong';
   S.lastActor = pid;
   S.turn = pid;
@@ -4846,7 +4850,8 @@ function draw(p) {
   S.players[p].hand.push(t);
   S.players[p].drawnTile = t;
   S.players[p].drawCount = (S.players[p].drawCount || 0) + 1;
-  S.remain = S.wall.length + S.deadWall.length;
+  // 剩余牌数 = 实际可供摸打的牌数（不包括王牌）
+  S.remain = S.wall.length;
   S.drawCount++;
   SoundEffects.draw();
   
@@ -4885,7 +4890,8 @@ function renderAll() {
   // 更新回合資訊
   const roundStr = ['東','南','西','北'][S.round - 1] + '風' + (seatNames?.[S.dealer] || ['東','南','西','北'][S.dealer]);
   document.getElementById('centerRound').textContent = roundStr;
-  document.getElementById('centerRemain').textContent = Math.max(0, S.remain || (S.wall.length + S.deadWall.length));
+  // 剩余牌数 = 实际可供摸打的牌数（wall.length，不包括王牌）
+  document.getElementById('centerRemain').textContent = Math.max(0, S.remain !== undefined ? S.remain : S.wall.length);
   
   // 對手區域（根据 myPlayerSeat 调整顺序）
   const opponentsArea = document.getElementById('opponentsArea');
@@ -6177,6 +6183,9 @@ function syncGameStateToServer() {
   fullState.seatNames = seatNames ? [...seatNames] : null;
   fullState.dealerStreak = dealerStreak || 0;
   
+  // 【重要】確保剩余牌數正確計算（只計算可摸的牌數，不包括王牌）
+  fullState.remain = fullState.wall.length;
+  
   // 【重要】隱私保護：清除其他玩家的 drawnTile
   // 每個客戶端只能知道自己摸到的牌
   for (let i = 0; i < 4; i++) {
@@ -6185,7 +6194,7 @@ function syncGameStateToServer() {
     }
   }
   
-  console.log('同步游戏状态到服务器, mySeat:', mySeat, ', turn:', fullState.turn);
+  console.log('同步游戏状态到服务器, mySeat:', mySeat, ', turn:', fullState.turn, ', remain:', fullState.remain);
   
   socket.emit('gameStateUpdate', {
     roomId: currentRoomId,
@@ -6222,11 +6231,10 @@ function syncGameState(gameState, fromPlayerSeat) {
   try {
     S = JSON.parse(JSON.stringify(gameState));
     
-    // 【重要】在连线模式下，强制使用服务器端的牌墙状态，确保一致性
+    // 【重要】强制使用正确的剩余牌数计算（只计算可摸的牌数，不包括王牌）
     // 这可以防止不同客户端牌墙状态不一致的问题
+    S.remain = S.wall.length;
     if (isOnlineMode) {
-      // 确保剩余牌数正确计算
-      S.remain = S.wall.length + S.deadWall.length;
       console.log('使用服务器端牌墙状态 - wall:', S.wall.length, ', deadWall:', S.deadWall.length, ', remain:', S.remain);
     }
     
