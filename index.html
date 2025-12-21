@@ -5611,8 +5611,9 @@ function startOnlineGame(data) {
   }
   
   // 关闭连线面板（所有玩家都需要关闭，无论是否是房主）
+  // 注意：如果是从 gameStarted 事件调用的，面板已经在事件处理中关闭了
   const onlinePanel = document.getElementById('onlinePanel');
-  if (onlinePanel) {
+  if (onlinePanel && onlinePanel.style.display !== 'none') {
     onlinePanel.style.display = 'none';
   }
   
