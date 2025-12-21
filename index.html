@@ -1817,6 +1817,11 @@ let GAME_SETTINGS = {
 let S = null;
 let seatNames = ['東','南','西','北'];
 
+// 获取当前玩家座位（连线模式用 mySeat，单机模式用 0）
+function getMyPlayerSeat() {
+  return (gameMode === 'online' && typeof mySeat !== 'undefined' && mySeat >= 0) ? mySeat : 0;
+}
+
 // IndexedDB 數據庫名稱和版本
 const DB_NAME = 'mahjong_game';
 const DB_VERSION = 1;
@@ -4216,12 +4221,14 @@ function stepNext() {
     S.turn = 0;
   }
   
-  if (S.turn === 0) {
-    // 玩家0的回合，先摸牌
-    const me = S.players[0];
+  const myPSeat = getMyPlayerSeat();
+  
+  if (S.turn === myPSeat) {
+    // 玩家的回合，先摸牌
+    const me = S.players[myPSeat];
     const hadDrawnTile = me.drawnTile; // 記錄之前是否有摸到的牌
     
-    draw(0);
+    draw(myPSeat);
     
     // 檢查是否成功摸牌
     if (!me.drawnTile && !hadDrawnTile) {
@@ -4251,7 +4258,7 @@ function stepNext() {
         // 如果已經報聽，自動胡牌
         if (me.declaredListen) {
           setTimeout(() => {
-            doWin(0, -1, t, true);
+            doWin(myPSeat, -1, t, true);
           }, 500); // 稍微延遲，讓玩家看到摸到的牌
           return;
         } else {
@@ -4264,7 +4271,7 @@ function stepNext() {
       // 如果已經報聽，自動執行所有操作
       if (me.declaredListen) {
         // 優先級1：檢查加槓（明槓）
-        const aks = canAddedKong(0);
+        const aks = canAddedKong(myPSeat);
         if (aks.length > 0) {
           const drawnKey = tileKey(t);
           // 找到可以用摸到的牌加槓的選項
@@ -4292,14 +4299,14 @@ function stepNext() {
           if (validKongs.length > 0) {
             // 自動加槓（不會破壞聽牌）
             setTimeout(() => {
-              doAddedKong(0, validKongs[0].meldIndex);
+              doAddedKong(myPSeat, validKongs[0].meldIndex);
             }, 500);
             return;
           }
         }
         
         // 優先級2：檢查暗槓
-        const cks = canConcealedKong(0);
+        const cks = canConcealedKong(myPSeat);
         if (cks.length > 0) {
           const drawnKey = tileKey(t);
           if (cks.includes(drawnKey)) {
@@ -4317,7 +4324,7 @@ function stepNext() {
             if (isListening(testHand, testMelds)) {
               // 自動暗槓（不會破壞聽牌）
               setTimeout(() => {
-                doConcealedKong(0, drawnKey);
+                doConcealedKong(myPSeat, drawnKey);
               }, 500);
               return;
             }
@@ -4333,7 +4340,7 @@ function stepNext() {
           if (canKeepListening) {
             // 如果能保持聽牌，自動丟掉摸到的牌
             setTimeout(() => {
-              discard(0, me.drawnTile);
+              discard(myPSeat, me.drawnTile);
             }, 500); // 稍微延遲，讓玩家看到摸到的牌
             return;
           }
@@ -4342,7 +4349,7 @@ function stepNext() {
     }
   } else {
     // AI 回合（在连线模式下，只有 AI 玩家才自动出牌）
-    const isCurrentPlayerAI = gameMode === 'online' ? (S.turn !== mySeat && S.players[S.turn].isAI) : (S.turn !== 0);
+    const isCurrentPlayerAI = gameMode === 'online' ? (S.turn !== mySeat && S.players[S.turn].isAI) : (S.turn !== myPSeat);
     if (isCurrentPlayerAI) {
       setTimeout(stepAI, 800 + Math.random() * 800);
     } else {
@@ -4354,7 +4361,8 @@ function stepNext() {
 
 function stepAI() {
   if (S.phase === 'end') return;
-  if (S.turn === 0) return;
+  const myPSeatAI = getMyPlayerSeat();
+  if (S.turn === myPSeatAI) return;
   
   const pid = S.turn;
   const pl = S.players[pid];
@@ -4617,15 +4625,20 @@ function renderAll() {
     return;
   }
   
+  // 确定当前玩家的座位（连线模式用 mySeat，单机模式用 0）
+  const myPlayerSeat = (gameMode === 'online' && mySeat >= 0) ? mySeat : 0;
+  
   // 更新回合資訊
   const roundStr = ['東','南','西','北'][S.round - 1] + '風' + (seatNames?.[S.dealer] || ['東','南','西','北'][S.dealer]);
   document.getElementById('centerRound').textContent = roundStr;
   document.getElementById('centerRemain').textContent = Math.max(0, S.remain || (S.wall.length + S.deadWall.length));
   
-  // 對手區域
+  // 對手區域（根据 myPlayerSeat 调整顺序）
   const opponentsArea = document.getElementById('opponentsArea');
   let opponentsHTML = '';
-  for (let i = 1; i <= 3; i++) {
+  // 对手座位顺序：从当前玩家的下一位开始，依次是 +1, +2, +3
+  for (let offset = 1; offset <= 3; offset++) {
+    const i = (myPlayerSeat + offset) % 4;
     const p = S.players[i];
     const wind = seatNames[i] || ['東','南','西','北'][i];
     const name = S.names && S.names[i] ? S.names[i] : wind + '家';
@@ -4672,11 +4685,11 @@ function renderAll() {
   }
   opponentsArea.innerHTML = opponentsHTML;
   
-  // 我的資訊
-  const me = S.players[0];
-  const myWind = seatNames[0] || '東';
+  // 我的資訊（使用 myPlayerSeat）
+  const me = S.players[myPlayerSeat];
+  const myWind = seatNames[myPlayerSeat] || ['東','南','西','北'][myPlayerSeat];
   document.getElementById('myWind').textContent = myWind;
-  document.getElementById('myName').textContent = S.names && S.names[0] ? S.names[0] + '(你)' : '你';
+  document.getElementById('myName').textContent = S.names && S.names[myPlayerSeat] ? S.names[myPlayerSeat] + '(你)' : '你';
   document.getElementById('myScore').textContent = me.points.toLocaleString();
   
   // 我的捨牌區
@@ -4688,7 +4701,7 @@ function renderAll() {
   
   const myDealerMark = document.getElementById('myDealerMark');
   const myListenMark = document.getElementById('myListenMark');
-  if (S.dealer === 0) {
+  if (S.dealer === myPlayerSeat) {
     myDealerMark.classList.remove('hidden');
     // 顯示連莊次數
     const streakText = S.dealerStreak > 0 ? `<span class="streak-mark">${S.dealerStreak}</span>` : '';
@@ -4709,8 +4722,8 @@ function renderAll() {
   // 檢查是否聽牌
   const myKongCount = countKongs(me);
   const totalTiles = me.hand.length + me.melds.reduce((sum, m) => sum + m.tiles.length, 0);
-  const expectedFull = (S.dealer === 0 ? 17 : 16) + myKongCount;
-  const expectedEmpty = (S.dealer === 0 ? 16 : 15) + myKongCount;
+  const expectedFull = (S.dealer === myPlayerSeat ? 17 : 16) + myKongCount;
+  const expectedEmpty = (S.dealer === myPlayerSeat ? 16 : 15) + myKongCount;
   
   if (totalTiles === expectedFull) {
     // 手牌滿的，檢查丟掉一張後是否能聽牌
@@ -4840,7 +4853,7 @@ function renderAll() {
   // 按鈕狀態
   const btnHu = document.getElementById('btnHu');
   btnHu.disabled = true;
-  if (S.turn === 0 && S.phase !== 'end' && S.waitReact === null) {
+  if (S.turn === myPlayerSeat && S.phase !== 'end' && S.waitReact === null) {
     // 檢查自摸：如果有摸到的牌，檢查是否能胡
     if (me.drawnTile) {
       // 檢查drawnTile是否在手牌中（可能剛摸到還沒處理）
@@ -4857,8 +4870,8 @@ function renderAll() {
       }
     }
     // 檢查榮胡：如果有lastDiscard且能胡
-    if (S.lastDiscard && S.lastDiscard.from !== 0) {
-      if (canWinOn(0, S.lastDiscard.tile)) {
+    if (S.lastDiscard && S.lastDiscard.from !== myPlayerSeat) {
+      if (canWinOn(myPlayerSeat, S.lastDiscard.tile)) {
         btnHu.disabled = false;
       }
     }
@@ -4868,21 +4881,21 @@ function renderAll() {
   let canListenBtn = false;
   if (me.declaredListen) {
     canListenBtn = false;
-  } else if (S.turn === 0 && S.phase !== 'end' && S.waitReact === null) {
+  } else if (S.turn === myPlayerSeat && S.phase !== 'end' && S.waitReact === null) {
     const listenKongCount = countKongs(me);
     const totalTilesMe = me.hand.length + me.melds.reduce((sum, m) => sum + m.tiles.length, 0);
-    const expectedFull = (S.dealer === 0 ? 17 : 16) + listenKongCount;
-    const expectedEmpty = (S.dealer === 0 ? 16 : 15) + listenKongCount;
+    const expectedFullBtn = (S.dealer === myPlayerSeat ? 17 : 16) + listenKongCount;
+    const expectedEmptyBtn = (S.dealer === myPlayerSeat ? 16 : 15) + listenKongCount;
     
     // 如果手牌是滿的（剛摸到牌），檢查丟掉一張後是否能聽牌
-    if (totalTilesMe === expectedFull) {
+    if (totalTilesMe === expectedFullBtn) {
       canListenBtn = me.hand.some(tile => {
         const testHand = me.hand.filter(t => t !== tile);
         return isListening(testHand, me.melds);
       });
     }
     // 如果手牌是空的（已經丟過牌），檢查當前是否已經聽牌
-    else if (totalTilesMe === expectedEmpty) {
+    else if (totalTilesMe === expectedEmptyBtn) {
       canListenBtn = isListening(me.hand, me.melds);
     }
     // 一進聽：檢查丟掉任意一張牌後是否能聽牌（手牌數量在合理範圍內）
@@ -4898,9 +4911,9 @@ function renderAll() {
   
   // 槓按鈕
   const btnKong = document.getElementById('btnKong');
-  if (S.turn === 0 && S.phase !== 'end' && S.waitReact === null) {
-    const cks = canConcealedKong(0);
-    const aks = canAddedKong(0);
+  if (S.turn === myPlayerSeat && S.phase !== 'end' && S.waitReact === null) {
+    const cks = canConcealedKong(myPlayerSeat);
+    const aks = canAddedKong(myPlayerSeat);
     btnKong.disabled = (cks.length === 0 && aks.length === 0);
   } else {
     btnKong.disabled = true;
@@ -5099,10 +5112,11 @@ function showFinalScore() {
 /* ========= 事件綁定 ========= */
 document.getElementById('btnHu').onclick = () => {
   initAudio();
+  const myPSeat = getMyPlayerSeat();
   if (S.currentReactions) {
     handleHuClick();
   } else {
-    const me = S.players[0];
+    const me = S.players[myPSeat];
     // 自摸情況：優先檢查drawnTile
     if (me.drawnTile) {
       // 檢查drawnTile是否在手牌中
@@ -5110,7 +5124,7 @@ document.getElementById('btnHu').onclick = () => {
         (t.suit === me.drawnTile.suit && t.rank === me.drawnTile.rank && 
          (!t.name || t.name === me.drawnTile.name)));
       if (drawnInHand && isWinningNow(me.hand, me.melds, me.drawnTile)) {
-        doWin(0, -1, me.drawnTile, true);
+        doWin(myPSeat, -1, me.drawnTile, true);
         return;
       }
     }
@@ -5118,7 +5132,7 @@ document.getElementById('btnHu').onclick = () => {
     if (me.hand.length > 0) {
       const lastTile = me.hand[me.hand.length - 1];
       if (isWinningNow(me.hand, me.melds, lastTile)) {
-        doWin(0, -1, lastTile, true);
+        doWin(myPSeat, -1, lastTile, true);
       }
     }
   }
@@ -5126,14 +5140,15 @@ document.getElementById('btnHu').onclick = () => {
 
 document.getElementById('btnListen').onclick = () => {
   initAudio();
-  if (S.turn !== 0 || S.phase === 'end' || S.waitReact !== null) return;
-  const me = S.players[0];
+  const myPSeat = getMyPlayerSeat();
+  if (S.turn !== myPSeat || S.phase === 'end' || S.waitReact !== null) return;
+  const me = S.players[myPSeat];
   if (me.declaredListen) return;
   
   const kongCount = countKongs(me);
   const total = me.hand.length + me.melds.reduce((s, m) => s + m.tiles.length, 0);
-  const expectedFull = (S.dealer === 0 ? 17 : 16) + kongCount;
-  const expectedEmpty = (S.dealer === 0 ? 16 : 15) + kongCount;
+  const expectedFull = (S.dealer === myPSeat ? 17 : 16) + kongCount;
+  const expectedEmpty = (S.dealer === myPSeat ? 16 : 15) + kongCount;
   
   let canListen = false;
   let listenAfterDiscard = false;
@@ -5243,27 +5258,28 @@ document.getElementById('btnListen').onclick = () => {
 
 document.getElementById('btnKong').onclick = () => {
   initAudio();
+  const myPSeat = getMyPlayerSeat();
   // 如果其他玩家打出牌，使用反應處理
   if (S.lastDiscard !== null && S.waitReact !== null) {
     handleKongClick();
     return;
   }
   // 如果是自己的回合，進行暗槓或加槓
-  if (S.turn !== 0 || S.phase === 'end' || S.lastDiscard !== null) return;
-  const me = S.players[0];
-  const added = canAddedKong(0);
-  const concealed = canConcealedKong(0);
+  if (S.turn !== myPSeat || S.phase === 'end' || S.lastDiscard !== null) return;
+  const me = S.players[myPSeat];
+  const added = canAddedKong(myPSeat);
+  const concealed = canConcealedKong(myPSeat);
   
   if (added.length > 0) {
     const cand = added[0];
     // 搶槓檢查已經在doAddedKong內部進行
-    doAddedKong(0, cand.meldIndex);
+    doAddedKong(myPSeat, cand.meldIndex);
     return;
   }
   
   if (concealed.length > 0) {
     const key = concealed[0];
-    doConcealedKong(0, key);
+    doConcealedKong(myPSeat, key);
     return;
   }
 };
@@ -5297,8 +5313,9 @@ document.getElementById('btnPass').onclick = () => {
 
 function onClickYourTile(idx) {
   initAudio();
-  if (S.turn !== 0 || S.phase === 'end') return;
-  const me = S.players[0];
+  const myPSeat = getMyPlayerSeat();
+  if (S.turn !== myPSeat || S.phase === 'end') return;
+  const me = S.players[myPSeat];
   
   if (S.waitReact !== null) {
     log('⚠️ 請先選擇吃、碰、槓或過');
@@ -5317,7 +5334,7 @@ function onClickYourTile(idx) {
     }
     
     // 丟牌後鎖定聽牌，並重新計算等牌
-    discard(0, tile);
+    discard(myPSeat, tile);
     me.tingLocked = true;
     const waits = calcWaitingTiles(afterDiscard, me.melds);
     me.waitKeys = waits.slice();
@@ -5330,7 +5347,7 @@ function onClickYourTile(idx) {
     return;
   }
   
-  // 如果已經鎖定聽牌（報聽後的回合）
+  // 如果已經鎖定聽牌（報聯後的回合）
   if (me.declaredListen && me.tingLocked) {
     // 如果剛摸到牌，只能打摸到的牌
     if (me.drawnTile) {
@@ -5351,7 +5368,7 @@ function onClickYourTile(idx) {
   }
   
   const tile = me.hand[idx];
-  discard(0, tile);
+  discard(myPSeat, tile);
 }
 
 /* ========= 啟動遊戲 ========= */
