@@ -4235,7 +4235,11 @@ function stepNext() {
     const me = S.players[myPSeat];
     const hadDrawnTile = me.drawnTile; // 記錄之前是否有摸到的牌
     
+    console.log('stepNext: 玩家摸牌前, 手牌数:', me.hand.length, ', drawnTile:', me.drawnTile ? tileKey(me.drawnTile) : null);
+    
     draw(myPSeat);
+    
+    console.log('stepNext: 玩家摸牌后, 手牌数:', me.hand.length, ', drawnTile:', me.drawnTile ? tileKey(me.drawnTile) : null);
     
     // 檢查是否成功摸牌
     if (!me.drawnTile && !hadDrawnTile) {
@@ -4619,8 +4623,12 @@ function draw(p) {
   
   // 連線模式：發送摸牌操作
   if (isOnlineMode && p === mySeat && socket) {
+    console.log('发送摸牌操作, drawnTile:', tileKey(t));
     sendPlayerAction('draw', {});
-    syncGameStateToServer();
+    // 延迟同步，确保本地状态先渲染
+    setTimeout(() => {
+      syncGameStateToServer();
+    }, 100);
   }
 }
 
@@ -4763,12 +4771,17 @@ function renderAll() {
   
   // 我的手牌
   const handKongCount = countKongs(me);
+  
+  // 确保 me 引用的是正确的玩家
+  if (!me || !me.hand) {
+    console.error('错误: me 或 me.hand 不存在', me);
+    return;
+  }
+  
   const origTiles = me.hand.map((t, idx) => ({ tile: t, index: idx }));
   
   // 调试：输出手牌和摸到的牌
-  if (gameMode === 'online') {
-    console.log('渲染手牌 - 座位:', myPlayerSeat, ', 手牌数:', me.hand.length, ', drawnTile:', me.drawnTile ? tileKey(me.drawnTile) : null);
-  }
+  console.log('渲染手牌 - 座位:', myPlayerSeat, ', 手牌数:', me.hand.length, ', drawnTile:', me.drawnTile ? tileKey(me.drawnTile) : null, ', origTiles数量:', origTiles.length);
   
   // 檢查是否有摸到的牌
   // 摸到的牌應該是最後一張（因為draw函數使用push），或者通過drawnTile標記找到
@@ -4776,6 +4789,9 @@ function renderAll() {
   let displayRest = [];
   
   if (me.drawnTile) {
+    const drawnTileKey = tileKey(me.drawnTile);
+    console.log('查找drawnTile:', drawnTileKey, ', 手牌keys:', me.hand.map(t => tileKey(t)));
+    
     // 先嘗試通過drawnTile找到
     const drawnIndex = me.hand.findIndex(t => {
       // 使用對象引用比較，如果失敗則使用屬性比較
@@ -4787,6 +4803,8 @@ function renderAll() {
       return false;
     });
     
+    console.log('drawnIndex:', drawnIndex);
+    
     if (drawnIndex >= 0) {
       drawnObj = origTiles[drawnIndex];
       // 其他牌排序顯示
@@ -4794,12 +4812,14 @@ function renderAll() {
         .sort((a, b) => tileSortKey(a.tile) - tileSortKey(b.tile));
     } else if (me.hand.length > 0) {
       // 如果找不到，使用最後一張牌（因為draw使用push）
-      console.log('找不到drawnTile，使用最後一張', me.drawnTile, me.hand);
+      console.log('找不到drawnTile，使用最後一張');
       const lastIdx = me.hand.length - 1;
       drawnObj = origTiles[lastIdx];
       displayRest = origTiles.slice(0, -1)
         .sort((a, b) => tileSortKey(a.tile) - tileSortKey(b.tile));
     }
+  } else {
+    console.log('没有drawnTile');
   }
   
   // 如果沒有摸到的牌，所有牌都排序顯示
@@ -4824,6 +4844,8 @@ function renderAll() {
     handHTML += `<div style="width: 12px; flex-shrink: 0;"></div>`;
     handHTML += `<div class="tile tile-md drawn suit-${t.suit}" onclick="onClickYourTile(${idx})">${keyToText(k)}</div>`;
   }
+  
+  console.log('渲染手牌完成: displayRest数量:', displayRest.length, ', drawnObj:', drawnObj ? tileKey(drawnObj.tile) : null, ', 总HTML长度:', handHTML.length);
   
   const handElement = document.getElementById('yourHand');
   handElement.innerHTML = handHTML;
@@ -5883,6 +5905,13 @@ function syncGameState(gameState) {
     return;
   }
   
+  // 如果当前玩家正在操作（有 drawnTile），不要覆盖状态
+  const myPSeatSync = getMyPlayerSeat();
+  if (S && S.players && S.players[myPSeatSync] && S.players[myPSeatSync].drawnTile) {
+    console.log('⚠️ syncGameState: 当前玩家有 drawnTile，跳过同步以避免覆盖');
+    return;
+  }
+  
   console.log('同步游戏状态:', gameState);
   
   // 深拷贝游戏状态
@@ -5908,14 +5937,12 @@ function syncGameState(gameState) {
     const myPSeatSync = getMyPlayerSeat();
     const myPlayer = S.players[myPSeatSync];
     
+    console.log('syncGameState 检查回合: turn=', S.turn, ', mySeat=', myPSeatSync, ', drawnTile=', myPlayer.drawnTile ? 'yes' : 'no', ', waitReact=', S.waitReact, ', lastAction=', S.lastAction);
+    
     // 如果轮到当前玩家的回合，且没有 drawnTile，且没有等待反应，需要触发 stepNext
-    // 但要避免重复触发（检查 lastAction 是否是 discard）
     if (S.turn === myPSeatSync && !myPlayer.drawnTile && !S.waitReact && S.phase !== 'end') {
-      // 只有在上一个动作是出牌时才触发摸牌
-      if (S.lastAction === 'discard' || S.lastAction === 'kong' || S.lastAction === 'pong' || S.lastAction === 'chow') {
-        console.log('轮到当前玩家回合，触发 stepNext, lastAction:', S.lastAction);
-        setTimeout(stepNext, 300);
-      }
+      console.log('轮到当前玩家回合，触发 stepNext');
+      setTimeout(stepNext, 300);
     }
   } catch (e) {
     console.error('syncGameState 错误:', e);
@@ -5981,7 +6008,8 @@ function handleRemoteAction(data) {
       break;
   }
   
-  syncGameStateToServer();
+  // 不需要在处理远程操作后同步状态，因为状态来自服务器
+  // 只有本地操作才需要同步状态
 }
 
 // 處理遠程出牌
