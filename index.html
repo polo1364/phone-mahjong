@@ -3168,6 +3168,11 @@ function discard(p, tile) {
     S.waitReact = reactions;
     const myPSeatDiscard = getMyPlayerSeat();
     
+    // 連線模式：同步狀態給其他玩家，讓他們知道有反應可以選擇
+    if (isOnlineMode && p === mySeat) {
+      syncGameStateToServer();
+    }
+    
     // 檢查當前玩家是否能胡（榮胡）
     const myHuReact = reactions.find(r => r.pid === myPSeatDiscard && r.type === 'hu');
     if (myHuReact) {
@@ -3243,9 +3248,32 @@ function discard(p, tile) {
     S.waitReact = null; // 清除waitReact
     // 移除回合切換log顯示
     renderAll(); // 先更新UI顯示回合變化
-    // 确保标志已重置，然后调用 stepNext
+    // 确保标志已重置
     isProcessingStep = false;
-    stepNext();
+    
+    // 連線模式：同步狀態後，由各自客戶端判斷是否輪到自己
+    if (isOnlineMode && p === mySeat) {
+      // 我出的牌，同步狀態
+      syncGameStateToServer();
+    }
+    
+    // 判斷下一個玩家
+    const myPSeat = getMyPlayerSeat();
+    if (nextTurn === myPSeat) {
+      // 輪到我了
+      setTimeout(stepNext, 300);
+    } else if (!isOnlineMode) {
+      // 單機模式，直接調用 stepNext
+      stepNext();
+    } else {
+      // 連線模式，判斷是否是AI
+      const isNextPlayerAI = !onlinePlayers.some(op => op.seat === nextTurn);
+      if (isNextPlayerAI && isHost) {
+        // AI玩家，房主控制
+        setTimeout(stepNext, 300);
+      }
+      // 真人玩家會通過狀態同步自動觸發他們的回合
+    }
   }
 }
 
@@ -4668,6 +4696,26 @@ function stepAI() {
 }
 
 function draw(p) {
+  // 連線模式下，確保只有正確的玩家可以摸牌
+  if (isOnlineMode) {
+    const isRealPlayer = onlinePlayers.some(op => op.seat === p);
+    
+    // 如果是真人玩家
+    if (isRealPlayer) {
+      // 只有自己可以執行自己的摸牌
+      if (p !== mySeat) {
+        console.log('⚠️ draw: 嘗試為其他真人玩家摸牌，跳過 (p=' + p + ', mySeat=' + mySeat + ')');
+        return;
+      }
+    } else {
+      // 如果是AI玩家，只有房主可以執行
+      if (!isHost) {
+        console.log('⚠️ draw: 非房主嘗試為AI摸牌，跳過');
+        return;
+      }
+    }
+  }
+  
   let t = null;
   
   // 優先從牌山摸牌
@@ -4690,7 +4738,9 @@ function draw(p) {
   S.drawCount++;
   SoundEffects.draw();
   
-  if (p === getMyPlayerSeat()) {
+  // 只有自己摸牌時才顯示 log
+  const myPSeat = getMyPlayerSeat();
+  if (p === myPSeat) {
     const k = tileKey(t);
     log(`🤲 你摸到 ${keyToText(k)}`);
   }
@@ -5849,6 +5899,12 @@ function initOnlineGame(data) {
   gameMode = 'online';
   gameInitialized = false;  // 先设为false，初始化完成后设为true
   
+  // 【重要】設置 onlinePlayers
+  if (data.players && data.players.length > 0) {
+    onlinePlayers = data.players;
+    console.log('設置 onlinePlayers:', onlinePlayers.map(p => ({seat: p.seat, name: p.name})));
+  }
+  
   // 强制关闭连线面板
   closeOnlinePanel();
   
@@ -6004,14 +6060,20 @@ function startOnlineGame(data) {
 function syncGameStateToServer() {
   if (!socket || !currentRoomId || !isOnlineMode || !S) return;
   
-  // 包含所有需要同步的游戏状态
-  // 注意：服务器需要完整状态（包括所有玩家的 drawnTile）用于游戏逻辑
-  // 但在客户端接收时会清除其他玩家的 drawnTile（隐私保护）
+  // 深拷貝狀態
   const fullState = JSON.parse(JSON.stringify(S));
   fullState.seatNames = seatNames ? [...seatNames] : null;
   fullState.dealerStreak = dealerStreak || 0;
   
-  console.log('同步游戏状态到服务器:', fullState);
+  // 【重要】隱私保護：清除其他玩家的 drawnTile
+  // 每個客戶端只能知道自己摸到的牌
+  for (let i = 0; i < 4; i++) {
+    if (i !== mySeat && fullState.players[i]) {
+      fullState.players[i].drawnTile = null;
+    }
+  }
+  
+  console.log('同步游戏状态到服务器, mySeat:', mySeat, ', turn:', fullState.turn);
   
   socket.emit('gameStateUpdate', {
     roomId: currentRoomId,
@@ -6095,21 +6157,39 @@ function syncGameState(gameState, fromPlayerSeat) {
       seatNames = [...gameState.seatNames];
     }
     
-    console.log('游戏状态同步完成, 当前回合:', S.turn, ', 莊家:', S.dealer);
+    console.log('游戏状态同步完成, 当前回合:', S.turn, ', 莊家:', S.dealer, ', mySeat:', myPSeatSync);
     
     // 强制重新渲染
     renderAll();
     
     // 检查是否轮到当前玩家的回合
-    // 注意：myPSeatSync 已在函数开始处定义，这里直接使用
     const myPlayer = S.players[myPSeatSync];
     
-    console.log('syncGameState 检查回合: turn=', S.turn, ', mySeat=', myPSeatSync, ', drawnTile=', myPlayer.drawnTile ? 'yes' : 'no', ', waitReact=', S.waitReact, ', lastAction=', S.lastAction);
+    console.log('syncGameState 检查回合: turn=', S.turn, ', mySeat=', myPSeatSync, ', drawnTile=', myPlayer.drawnTile ? 'yes' : 'no', ', waitReact=', S.waitReact, ', lastAction=', S.lastAction, ', phase=', S.phase);
     
-    // 如果轮到当前玩家的回合，且没有 drawnTile，且没有等待反应，需要触发 stepNext
-    if (S.turn === myPSeatSync && !myPlayer.drawnTile && !S.waitReact && S.phase !== 'end' && !isProcessingStep) {
-      console.log('轮到当前玩家回合，触发 stepNext');
-      setTimeout(stepNext, 300);
+    // 如果轮到当前玩家的回合
+    if (S.turn === myPSeatSync && S.phase !== 'end' && !isProcessingStep) {
+      // 檢查是否需要摸牌（沒有 drawnTile 且不是等待反應）
+      if (!myPlayer.drawnTile && !S.waitReact) {
+        // 莊家第一次出牌不需要摸牌（手牌已經有17張）
+        const isFirstDealerTurn = S.dealer === myPSeatSync && myPlayer.drawCount === 0 && myPlayer.hand.length === 17;
+        
+        if (isFirstDealerTurn) {
+          console.log('莊家第一次出牌，不需要摸牌');
+          log('👉 輪到你了，請出牌');
+        } else {
+          console.log('轮到当前玩家回合，触发 stepNext');
+          setTimeout(stepNext, 300);
+        }
+      } else if (myPlayer.drawnTile) {
+        // 已經摸牌了，等待玩家出牌
+        console.log('已有 drawnTile，等待出牌');
+        log('👉 輪到你了，請出牌');
+      }
+    } else if (S.waitReact && S.waitReact.some(r => r.pid === myPSeatSync)) {
+      // 有反應可選
+      console.log('有反應可選');
+      showReactionPanel(S.waitReact.filter(r => r.pid === myPSeatSync));
     } else if (isProcessingStep) {
       console.log('⚠️ syncGameState: stepNext 正在处理中，跳过触发');
     }
@@ -6183,32 +6263,24 @@ function handleRemoteAction(data) {
 
 // 處理遠程出牌
 function handleRemoteDiscard(playerSeat, tileKeyStr) {
+  console.log('handleRemoteDiscard:', playerSeat, tileKeyStr);
+  
   if (!S || !S.round || !S.players[playerSeat]) {
     console.warn('⚠️ handleRemoteDiscard: 游戏状态未初始化，等待同步');
     return;
   }
   
-  // 在玩家手牌中找到对应的牌
-  const player = S.players[playerSeat];
-  const tileInHand = player.hand.find(t => tileKey(t) === tileKeyStr);
+  // 播放出牌音效和語音（不依賴狀態同步）
+  SoundEffects.discard();
+  const tileText = keyToText(tileKeyStr);
+  const speechText = tileNameForSpeech(tileText);
+  speakText(speechText, { rate: 1.0, pitch: 1.0, volume: 0.8 });
   
-  if (tileInHand) {
-    // 直接调用 discard 函数（不会再次发送 sendPlayerAction，因为 playerSeat !== mySeat）
-    discard(playerSeat, tileInHand);
-  } else if (player.drawnTile && tileKey(player.drawnTile) === tileKeyStr) {
-    // 如果是刚摸的牌
-    discard(playerSeat, player.drawnTile);
-  } else {
-    console.warn('⚠️ handleRemoteDiscard: 找不到对应的牌', tileKeyStr);
-    // 尝试同步游戏状态
-    if (socket && currentRoomId) {
-      socket.emit('getRoomState', currentRoomId, (response) => {
-        if (response.success && response.room && response.room.gameState) {
-          syncGameState(response.room.gameState, null);
-        }
-      });
-    }
-  }
+  // 顯示出牌 log
+  log(`🎴 ${playerName(playerSeat)} 打出 ${tileText}`);
+  
+  // 實際的狀態更新由 syncGameState 處理
+  // 這裡只負責顯示和音效
 }
 
 // 處理遠程碰
@@ -6249,22 +6321,13 @@ function handleRemoteListen(playerSeat) {
 
 // 處理遠程摸牌
 function handleRemoteDraw(playerSeat) {
-  // 确保游戏状态已同步
-  if (!S || !S.round) {
-    console.warn('⚠️ handleRemoteDraw: 游戏状态未初始化，等待同步');
-    return;
-  }
+  // 远程玩家摸牌时，我们只需要知道他摸牌了
+  // 具体的牌是什么是隐私的，不显示
+  // 状态会在玩家出牌后通过 syncGameState 更新
+  console.log('遠程玩家摸牌:', playerSeat);
   
-  // 远程玩家摸牌时，我们依赖状态同步来更新
-  // 因为我们无法从本地牌墙摸牌给远程玩家
-  // 直接请求状态同步
-  if (socket && currentRoomId) {
-    socket.emit('getRoomState', currentRoomId, (response) => {
-      if (response.success && response.room && response.room.gameState) {
-        syncGameState(response.room.gameState, null);
-      }
-    });
-  }
+  // 不需要做任何事情，状态同步会处理一切
+  // 如果需要显示摸牌动画，可以在这里添加
 }
 
 // 更新房間玩家列表
