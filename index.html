@@ -5999,7 +5999,7 @@ function syncGameState(gameState, fromPlayerSeat) {
     renderAll();
     
     // 检查是否轮到当前玩家的回合
-    const myPSeatSync = getMyPlayerSeat();
+    // 注意：myPSeatSync 已在函数开始处定义，这里直接使用
     const myPlayer = S.players[myPSeatSync];
     
     console.log('syncGameState 检查回合: turn=', S.turn, ', mySeat=', myPSeatSync, ', drawnTile=', myPlayer.drawnTile ? 'yes' : 'no', ', waitReact=', S.waitReact, ', lastAction=', S.lastAction);
