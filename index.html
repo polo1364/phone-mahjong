@@ -4606,6 +4606,12 @@ function draw(p) {
 
 /* ========= UI 渲染 ========= */
 function renderAll() {
+  // 检查游戏状态是否存在
+  if (!S || !S.round) {
+    console.warn('⚠️ renderAll: 游戏状态未初始化，跳过渲染');
+    return;
+  }
+  
   // 更新回合資訊
   const roundStr = ['東','南','西','北'][S.round - 1] + '風' + (seatNames?.[S.dealer] || ['東','南','西','北'][S.dealer]);
   document.getElementById('centerRound').textContent = roundStr;
@@ -5729,6 +5735,11 @@ function syncGameStateToServer() {
 function syncGameState(gameState) {
   if (!isOnlineMode) return;
   
+  if (!gameState || !gameState.round) {
+    console.warn('⚠️ syncGameState: 收到的游戏状态无效');
+    return;
+  }
+  
   const oldTurn = S?.turn;
   const oldPhase = S?.phase;
   S = { ...gameState };
@@ -5754,6 +5765,12 @@ function handleRemoteAction(data) {
   const { action, params, playerSeat } = data;
   
   if (playerSeat === mySeat) return;
+  
+  // 确保游戏状态已初始化
+  if (!S || !S.round) {
+    console.warn('⚠️ handleRemoteAction: 游戏状态未初始化，等待同步');
+    return;
+  }
   
   switch (action) {
     case 'discard':
@@ -5784,10 +5801,12 @@ function handleRemoteAction(data) {
 
 // 處理遠程出牌
 function handleRemoteDiscard(playerSeat, tileKey) {
-  const tileObj = keyToTileFromKey(tileKey);
-  if (S && S.players[playerSeat]) {
-    renderAll();
+  if (!S || !S.round || !S.players[playerSeat]) {
+    console.warn('⚠️ handleRemoteDiscard: 游戏状态未初始化，等待同步');
+    return;
   }
+  const tileObj = keyToTileFromKey(tileKey);
+  renderAll();
 }
 
 // 處理遠程碰
@@ -5816,16 +5835,23 @@ function handleRemoteWin(playerSeat, params) {
 
 // 處理遠程報聽
 function handleRemoteListen(playerSeat) {
-  if (S && S.players[playerSeat]) {
-    S.players[playerSeat].declaredListen = true;
-    updateTianDiTing(playerSeat);
-    log(`🔔 ${playerName(playerSeat)} 報聽`);
-    renderAll();
+  if (!S || !S.round || !S.players[playerSeat]) {
+    console.warn('⚠️ handleRemoteListen: 游戏状态未初始化，等待同步');
+    return;
   }
+  S.players[playerSeat].declaredListen = true;
+  updateTianDiTing(playerSeat);
+  log(`🔔 ${playerName(playerSeat)} 報聽`);
+  renderAll();
 }
 
 // 處理遠程摸牌
 function handleRemoteDraw(playerSeat) {
+  // 确保游戏状态已同步
+  if (!S || !S.round) {
+    console.warn('⚠️ handleRemoteDraw: 游戏状态未初始化，等待同步');
+    return;
+  }
   renderAll();
 }
 
