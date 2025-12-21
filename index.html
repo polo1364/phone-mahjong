@@ -6426,6 +6426,21 @@ function syncGameState(gameState, fromPlayerSeat) {
       showReactionPanel(S.waitReact.filter(r => r.pid === myPSeatSync));
     } else if (isProcessingStep) {
       console.log('⚠️ syncGameState: stepNext 正在处理中，跳过触发');
+    } else if (S.turn !== myPSeatSync && S.phase !== 'end' && isOnlineMode && isHost) {
+      // 不是当前玩家的回合，但是连线模式且是房主，检查是否是AI玩家
+      if (!onlinePlayers || onlinePlayers.length === 0) {
+        console.error('❌ syncGameState: onlinePlayers 未定義或為空！');
+        return;
+      }
+      const isRealPlayer = onlinePlayers.some(p => p.seat === S.turn);
+      if (!isRealPlayer) {
+        // AI玩家，房主控制
+        console.log('syncGameState: 轮到AI玩家', S.turn, '，房主控制，调用 stepNext');
+        setTimeout(stepNext, 300);
+      } else {
+        // 真人玩家，等待他们自己操作
+        console.log('syncGameState: 轮到真人玩家', S.turn, '，等待他们自己操作');
+      }
     }
   } catch (e) {
     console.error('syncGameState 错误:', e);
