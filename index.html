@@ -664,6 +664,11 @@ body {
   display: flex;
 }
 
+/* 强制隐藏连线面板（优先级最高） */
+#onlinePanel[style*="display: none"] {
+  display: none !important;
+}
+
 .modal-content {
   background: rgba(255,255,255,0.98);
   border: 2px solid var(--border-subtle);
@@ -5548,12 +5553,15 @@ function initOnline() {
     }
     if (data.status === 'playing' && !S) {
       // 如果游戏状态是 playing 且游戏还没初始化，说明游戏已经开始了
-      // 关闭连线面板
-      const onlinePanel = document.getElementById('onlinePanel');
-      if (onlinePanel) {
-        onlinePanel.style.display = 'none';
-        onlinePanel.classList.remove('show');
-      }
+      // 强制关闭连线面板（所有玩家都需要关闭）
+      setTimeout(() => {
+        const onlinePanel = document.getElementById('onlinePanel');
+        if (onlinePanel) {
+          onlinePanel.classList.remove('show');
+          onlinePanel.style.setProperty('display', 'none', 'important');
+          onlinePanel.setAttribute('style', 'display: none !important;');
+        }
+      }, 0);
       startOnlineGame(data);
     }
   });
@@ -5562,16 +5570,29 @@ function initOnline() {
     log('🎮 遊戲開始！');
     // 所有玩家收到 gameStarted 事件时，都应该关闭连线面板并初始化游戏
     // 立即强制关闭连线面板（使用多种方法确保关闭）
-    setTimeout(() => {
-      const onlinePanel = document.getElementById('onlinePanel');
-      if (onlinePanel) {
-        onlinePanel.classList.remove('show');
-        onlinePanel.style.setProperty('display', 'none', 'important');
-        onlinePanel.style.display = 'none';
-        // 强制隐藏
-        onlinePanel.setAttribute('style', 'display: none !important;');
-      }
-    }, 0);
+    const onlinePanel = document.getElementById('onlinePanel');
+    if (onlinePanel) {
+      // 立即移除 show 类
+      onlinePanel.classList.remove('show');
+      // 使用多种方法强制隐藏
+      onlinePanel.style.setProperty('display', 'none', 'important');
+      onlinePanel.setAttribute('style', 'display: none !important;');
+      // 再次确保（延迟执行，防止CSS覆盖）
+      setTimeout(() => {
+        if (onlinePanel) {
+          onlinePanel.classList.remove('show');
+          onlinePanel.style.setProperty('display', 'none', 'important');
+          onlinePanel.setAttribute('style', 'display: none !important;');
+        }
+      }, 10);
+      setTimeout(() => {
+        if (onlinePanel) {
+          onlinePanel.classList.remove('show');
+          onlinePanel.style.setProperty('display', 'none', 'important');
+          onlinePanel.setAttribute('style', 'display: none !important;');
+        }
+      }, 100);
+    }
     startOnlineGame(data);
   });
   
@@ -5664,9 +5685,26 @@ function startOnlineGame(data) {
   // 强制关闭，确保面板隐藏（移除 show 类并设置 display: none）
   const onlinePanel = document.getElementById('onlinePanel');
   if (onlinePanel) {
+    // 立即移除 show 类
     onlinePanel.classList.remove('show');
-    onlinePanel.style.display = 'none';
+    // 使用多种方法强制隐藏
     onlinePanel.style.setProperty('display', 'none', 'important');
+    onlinePanel.setAttribute('style', 'display: none !important;');
+    // 再次确保（延迟执行，防止CSS覆盖）
+    setTimeout(() => {
+      if (onlinePanel) {
+        onlinePanel.classList.remove('show');
+        onlinePanel.style.setProperty('display', 'none', 'important');
+        onlinePanel.setAttribute('style', 'display: none !important;');
+      }
+    }, 10);
+    setTimeout(() => {
+      if (onlinePanel) {
+        onlinePanel.classList.remove('show');
+        onlinePanel.style.setProperty('display', 'none', 'important');
+        onlinePanel.setAttribute('style', 'display: none !important;');
+      }
+    }, 100);
   }
   
   // 检查是否是房主，或者游戏状态已经是 playing
