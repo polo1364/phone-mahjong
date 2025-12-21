@@ -5719,6 +5719,26 @@ function startOnlineGame(data) {
   
   startNewHand(true);
   log('🎮 連線遊戲開始！');
+  
+  // 游戏初始化完成后，如果是房主，同步游戏状态给其他玩家
+  // 如果不是房主，请求同步游戏状态
+  setTimeout(() => {
+    if (S && S.round) {
+      if (isHost) {
+        // 房主同步游戏状态给其他玩家
+        syncGameStateToServer();
+      } else {
+        // 非房主请求同步游戏状态
+        if (socket && currentRoomId) {
+          socket.emit('getRoomState', currentRoomId, (response) => {
+            if (response.success && response.room && response.room.gameState) {
+              syncGameState(response.room.gameState);
+            }
+          });
+        }
+      }
+    }
+  }, 500);
 }
 
 // 同步遊戲狀態到服務器
@@ -5768,7 +5788,19 @@ function handleRemoteAction(data) {
   
   // 确保游戏状态已初始化
   if (!S || !S.round) {
-    console.warn('⚠️ handleRemoteAction: 游戏状态未初始化，等待同步');
+    console.warn('⚠️ handleRemoteAction: 游戏状态未初始化，请求同步');
+    // 请求同步游戏状态
+    if (socket && currentRoomId) {
+      socket.emit('getRoomState', currentRoomId, (response) => {
+        if (response.success && response.room && response.room.gameState) {
+          syncGameState(response.room.gameState);
+          // 同步后重新处理操作
+          setTimeout(() => {
+            handleRemoteAction(data);
+          }, 100);
+        }
+      });
+    }
     return;
   }
   
