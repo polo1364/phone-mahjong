@@ -2153,16 +2153,24 @@ function startNewHand(isFirstGame = false) {
     startAutoSave();
   }
   
-  // 在连线模式下，只有 AI 玩家才自动出牌
-  const isDealerAI = gameMode === 'online' ? (S.dealer !== mySeat && S.players[S.dealer].isAI) : (S.dealer !== 0);
+  // 在連線模式下，判斷莊家類型
+  const isDealerMe = gameMode === 'online' ? (S.dealer === mySeat) : (S.dealer === 0);
+  const isDealerAI = gameMode === 'online' ? 
+    (!onlinePlayers.some(p => p.seat === S.dealer)) : 
+    (S.dealer !== 0);
   
-  if (S.dealer === 0 || (gameMode === 'online' && S.dealer === mySeat)) {
+  if (isDealerMe) {
     log(`👉 莊家持有17張牌，請直接出牌`);
   } else if (isDealerAI) {
-    log(`⏳ AI莊家開始出牌...`);
-    setTimeout(stepAI, 1000 + Math.random() * 1000);
+    // AI莊家，只有房主控制
+    if (!isOnlineMode || isHost) {
+      log(`⏳ AI莊家開始出牌...`);
+      setTimeout(stepAI, 1000 + Math.random() * 1000);
+    } else {
+      log(`⏳ 等待莊家出牌...`);
+    }
   } else {
-    // 连线模式下，其他真人玩家等待他们自己出牌
+    // 連線模式下，其他真人莊家
     log(`⏳ 等待 ${S.names[S.dealer]} 出牌...`);
   }
 }
@@ -3212,7 +3220,20 @@ function discard(p, tile) {
       }
       showReactionPanel(reactions.filter(r => r.pid === myPSeatDiscard));
     } else {
-      setTimeout(() => handleAIReaction(reactions), 1000 + Math.random() * 1000);
+      // 檢查是否有真人玩家可以反應
+      const humanReactions = reactions.filter(r => {
+        return isOnlineMode && onlinePlayers.some(p => p.seat === r.pid);
+      });
+      
+      if (humanReactions.length > 0 && isOnlineMode) {
+        // 有真人玩家可以反應，等待他們的操作
+        console.log('等待真人玩家反應:', humanReactions.map(r => r.pid));
+      } else {
+        // 只有AI可以反應，只有房主處理AI反應
+        if (!isOnlineMode || isHost) {
+          setTimeout(() => handleAIReaction(reactions), 1000 + Math.random() * 1000);
+        }
+      }
     }
   } else {
     // 使用丟牌玩家p來計算下一個回合，而不是S.turn
@@ -3442,6 +3463,12 @@ function showListenPanel() {
 }
 
 function handleAIReaction(reactions) {
+  // 連線模式下，只有房主處理AI反應
+  if (isOnlineMode && !isHost) {
+    console.log('handleAIReaction: 非房主，跳過AI反應處理');
+    return;
+  }
+  
   // 優先級1：胡牌（AI能胡時，根據情況決定是否胡）
   const huReact = reactions.find(r => r.type === 'hu');
   if (huReact) {
@@ -4387,19 +4414,41 @@ function stepNext() {
       isProcessingStep = false;
     }
   } else {
-    // AI 回合（在连线模式下，只有 AI 玩家才自动出牌）
-    const isCurrentPlayerAI = gameMode === 'online' ? (S.turn !== mySeat && S.players[S.turn].isAI) : (S.turn !== myPSeat);
-    if (isCurrentPlayerAI) {
-      setTimeout(stepAI, 800 + Math.random() * 800);
+    // 不是當前玩家的回合
+    // 連線模式：判斷是否是AI（只有房主控制AI）
+    if (isOnlineMode) {
+      // 檢查是否是真人玩家
+      const isRealPlayer = onlinePlayers.some(p => p.seat === S.turn);
+      
+      if (isRealPlayer) {
+        // 真人玩家，等待他們自己出牌
+        log(`⏳ 等待 ${S.names[S.turn]} 出牌...`);
+      } else {
+        // AI玩家，只有房主控制
+        if (isHost) {
+          console.log('房主控制AI玩家:', S.turn);
+          setTimeout(stepAI, 800 + Math.random() * 800);
+        } else {
+          // 非房主等待狀態同步
+          log(`⏳ 等待 ${S.names[S.turn]} 出牌...`);
+        }
+      }
     } else {
-      // 连线模式下，其他真人玩家等待他们自己出牌
-      log(`⏳ 等待 ${S.names[S.turn]} 出牌...`);
+      // 單機模式
+      setTimeout(stepAI, 800 + Math.random() * 800);
     }
   }
 }
 
 function stepAI() {
   if (S.phase === 'end') return;
+  
+  // 連線模式下，只有房主控制AI
+  if (isOnlineMode && !isHost) {
+    console.log('stepAI: 非房主，跳過AI控制');
+    return;
+  }
+  
   const myPSeatAI = getMyPlayerSeat();
   if (S.turn === myPSeatAI) return;
   
@@ -5582,8 +5631,10 @@ let socket = null;
 let currentRoomId = null;
 let mySeat = -1;
 let isOnlineMode = false;
+let isHost = false;  // 是否是房主（只有房主控制AI）
 let onlinePlayers = [];
 let isProcessingStep = false; // 防止 stepNext 重复调用
+let gameInitialized = false;  // 游戏是否已初始化
 
 // 关闭连线面板的可靠函数
 function closeOnlinePanel() {
@@ -5642,6 +5693,7 @@ function initOnline() {
   socket.on('roomCreated', (data) => {
     currentRoomId = data.roomId;
     mySeat = data.seat;
+    isHost = data.isHost || true;  // 創建房間的人是房主
     log(`🎮 房間已創建: ${data.roomId}`);
     const roomDisplay = document.getElementById('roomIdDisplay');
     if (roomDisplay) {
@@ -5653,19 +5705,24 @@ function initOnline() {
   socket.on('roomJoined', (data) => {
     currentRoomId = data.roomId;
     mySeat = data.seat;
+    isHost = data.isHost || false;  // 加入房間的人不是房主
     log(`✅ 已加入房間: ${data.roomId}`);
     updateRoomUI();
   });
   
   socket.on('roomState', (data) => {
     onlinePlayers = data.players;
+    // 更新房主狀態
+    const myPlayer = data.players.find(p => p.id === socket.id);
+    if (myPlayer) {
+      isHost = myPlayer.isHost;
+    }
     updateRoomPlayers(data.players);
     const startBtn = document.getElementById('startGameBtn');
     if (startBtn) {
-      const isHost = data.players.find(p => p.id === socket.id)?.isHost;
       startBtn.style.display = (isHost && data.players.length >= 2 && data.status === 'waiting') ? 'block' : 'none';
     }
-    if (data.status === 'playing' && !S) {
+    if (data.status === 'playing' && !gameInitialized) {
       // 如果游戏状态是 playing 且游戏还没初始化，说明游戏已经开始了
       closeOnlinePanel();
       startOnlineGame(data);
@@ -5675,6 +5732,12 @@ function initOnline() {
   socket.on('gameStarted', (data) => {
     console.log('收到 gameStarted 事件:', data);
     log('🎮 遊戲開始！');
+    
+    // 更新房主狀態
+    const myPlayer = data.players?.find(p => p.id === socket.id);
+    if (myPlayer) {
+      isHost = myPlayer.isHost;
+    }
     
     // 确保 data.status 为 'playing'（即使服务器没有发送）
     if (!data.status) {
@@ -5694,9 +5757,25 @@ function initOnline() {
     }
   });
   
+  socket.on('gameReadyNotify', (data) => {
+    console.log('收到 gameReadyNotify 事件');
+    if (!isHost && data.gameState) {
+      syncGameState(data.gameState, null);
+    }
+  });
+  
   socket.on('actionBroadcast', (data) => {
     if (isOnlineMode) {
       handleRemoteAction(data);
+    }
+  });
+  
+  socket.on('playerDisconnected', (data) => {
+    log(`⚠️ 玩家斷線`);
+    // 如果新房主是自己，更新狀態
+    if (data.newHostId === socket.id) {
+      isHost = true;
+      log('👑 你已成為新房主');
     }
   });
   
@@ -5763,11 +5842,12 @@ function joinOnlineRoom() {
 
 // 直接初始化游戏（用于 gameStarted 事件，跳过所有检查）
 function initOnlineGame(data) {
-  console.log('initOnlineGame 被调用:', data);
+  console.log('initOnlineGame 被调用:', data, ', isHost:', isHost);
   
   // 【重要】设置连线模式标志
   isOnlineMode = true;
   gameMode = 'online';
+  gameInitialized = false;  // 先设为false，初始化完成后设为true
   
   // 强制关闭连线面板
   closeOnlinePanel();
@@ -5790,7 +5870,9 @@ function initOnlineGame(data) {
       const aiNames = shuffled.slice(0, needAI);
       const allNames = [...onlinePlayerNames, ...aiNames];
       GAME_SETTINGS.playerNames = allNames;
-      log(`🤖 自動補位 ${needAI} 位AI玩家：${aiNames.join('、')}`);
+      if (isHost) {
+        log(`🤖 自動補位 ${needAI} 位AI玩家：${aiNames.join('、')}`);
+      }
     } else {
       GAME_SETTINGS.playerNames = onlinePlayerNames;
     }
@@ -5803,16 +5885,17 @@ function initOnlineGame(data) {
       mySeat = player.seat;
     }
   }
-  console.log('当前座位 mySeat:', mySeat, ', isOnlineMode:', isOnlineMode);
   
   // 确定是否是房主
-  const isHost = data.players?.find(p => p.id === socket?.id)?.isHost || false;
-  console.log('是否是房主:', isHost);
+  const playerInfo = data.players?.find(p => p.id === socket?.id);
+  isHost = playerInfo?.isHost || false;
+  
+  console.log('当前座位 mySeat:', mySeat, ', isOnlineMode:', isOnlineMode, ', isHost:', isHost);
   
   // 清空日志
   document.getElementById('log').innerHTML = '';
   log('🎮 連線遊戲開始！');
-  log(`📍 你的座位: ${mySeat}, 連線模式: ${isOnlineMode}`);
+  log(`📍 你的座位: ${mySeat}, ${isHost ? '👑 房主' : '玩家'}`);
   
   if (isHost) {
     // 房主：生成游戏状态并同步给其他玩家
@@ -5820,14 +5903,17 @@ function initOnlineGame(data) {
     S = null;
     dealerStreak = 0;
     startNewHand(true);
+    gameInitialized = true;
     
     // 延迟同步，确保游戏初始化完成
     setTimeout(() => {
       if (S && S.round) {
         console.log('房主同步游戏状态给其他玩家...');
         syncGameStateToServer();
+        // 通知服务器游戏已准备好
+        socket.emit('gameReady', { roomId: currentRoomId });
       }
-    }, 300);
+    }, 500);
   } else {
     // 非房主：等待房主同步游戏状态
     console.log('非房主等待游戏状态同步...');
@@ -5838,10 +5924,10 @@ function initOnlineGame(data) {
     
     // 持续请求游戏状态，直到收到
     let retryCount = 0;
-    const maxRetries = 20;
+    const maxRetries = 30;  // 增加重试次数
     
     function requestGameState() {
-      if (S && S.round) {
+      if (gameInitialized && S && S.round) {
         console.log('已收到游戏状态');
         return;
       }
@@ -5860,7 +5946,13 @@ function initOnlineGame(data) {
           if (response.success && response.room && response.room.gameState) {
             console.log('收到游戏状态:', response.room.gameState);
             syncGameState(response.room.gameState, null);
+            gameInitialized = true;
             renderAll();
+            
+            // 检查是否轮到自己
+            if (S && S.turn === mySeat && !S.players[mySeat].drawnTile) {
+              log('👉 輪到你了，請出牌');
+            }
           } else {
             // 继续重试
             setTimeout(requestGameState, 500);
@@ -5872,7 +5964,7 @@ function initOnlineGame(data) {
     }
     
     // 开始请求
-    setTimeout(requestGameState, 500);
+    setTimeout(requestGameState, 800);
   }
 }
 
@@ -6210,6 +6302,8 @@ function exitOnlineMode() {
   isOnlineMode = false;
   currentRoomId = null;
   mySeat = -1;
+  isHost = false;
+  gameInitialized = false;
   onlinePlayers = [];
   
   const onlinePanel = document.getElementById('onlinePanel');

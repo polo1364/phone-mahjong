@@ -20,11 +20,13 @@ const io = socketIo(server, {
   cors: {
     origin: "*",
     methods: ["GET", "POST"]
-  }
+  },
+  pingTimeout: 60000,
+  pingInterval: 25000
 });
 
 // 房间管理
-const rooms = new Map(); // roomId -> { players: [], gameState: null, settings: {} }
+const rooms = new Map(); // roomId -> { players: [], gameState: null, settings: {}, hostId: null }
 
 // 生成房间ID
 function generateRoomId() {
@@ -37,13 +39,15 @@ function createRoom(hostId, settings = {}) {
   rooms.set(roomId, {
     players: [{ id: hostId, name: settings.playerName || '玩家1', isHost: true, seat: 0 }],
     gameState: null,
+    hostId: hostId,  // 保存房主ID
     settings: {
       basePoints: settings.basePoints || 2000,
       perFanPoints: settings.perFanPoints || 1000,
       initialPoints: settings.initialPoints || 100000,
       ...settings
     },
-    status: 'waiting' // waiting, playing, ended
+    status: 'waiting', // waiting, playing, ended
+    gameReady: false   // 游戏是否已初始化
   });
   return roomId;
 }
@@ -56,20 +60,24 @@ function joinRoom(roomId, playerId, playerName) {
   if (room.status !== 'waiting') return { success: false, error: '游戏已开始' };
   
   const seat = room.players.length;
-  room.players.push({
+  const player = {
     id: playerId,
     name: playerName || `玩家${seat + 1}`,
     isHost: false,
     seat: seat
-  });
+  };
+  room.players.push(player);
   
-  return { success: true, room, seat };
+  return { success: true, room, seat, player };
 }
 
 // 离开房间
 function leaveRoom(roomId, playerId) {
   const room = rooms.get(roomId);
   if (!room) return;
+  
+  const leavingPlayer = room.players.find(p => p.id === playerId);
+  const wasHost = leavingPlayer?.isHost;
   
   room.players = room.players.filter(p => p.id !== playerId);
   
@@ -78,9 +86,9 @@ function leaveRoom(roomId, playerId) {
     rooms.delete(roomId);
   } else {
     // 如果离开的是房主，转移房主
-    const wasHost = room.players.find(p => p.id === playerId)?.isHost;
     if (wasHost && room.players.length > 0) {
       room.players[0].isHost = true;
+      room.hostId = room.players[0].id;
     }
   }
 }
@@ -93,7 +101,9 @@ function broadcastRoomState(roomId) {
   io.to(roomId).emit('roomState', {
     players: room.players,
     status: room.status,
-    settings: room.settings
+    settings: room.settings,
+    hostId: room.hostId,
+    gameReady: room.gameReady
   });
 }
 
@@ -105,7 +115,7 @@ io.on('connection', (socket) => {
   socket.on('createRoom', (settings, callback) => {
     const roomId = createRoom(socket.id, settings);
     socket.join(roomId);
-    socket.emit('roomCreated', { roomId, seat: 0 });
+    socket.emit('roomCreated', { roomId, seat: 0, isHost: true });
     broadcastRoomState(roomId);
     if (callback) callback({ success: true, roomId });
   });
@@ -117,7 +127,7 @@ io.on('connection', (socket) => {
     
     if (result.success) {
       socket.join(roomId);
-      socket.emit('roomJoined', { roomId, seat: result.seat });
+      socket.emit('roomJoined', { roomId, seat: result.seat, isHost: false, player: result.player });
       broadcastRoomState(roomId);
     }
     
@@ -150,13 +160,15 @@ io.on('connection', (socket) => {
     }
     
     room.status = 'playing';
+    room.gameReady = false;  // 重置游戏准备状态
     
-    console.log(`游戏开始 - 房间: ${roomId}, 玩家数: ${room.players.length}`);
+    console.log(`游戏开始 - 房间: ${roomId}, 玩家数: ${room.players.length}, 房主: ${room.hostId}`);
     
     io.to(roomId).emit('gameStarted', {
       players: room.players,
       settings: room.settings,
-      status: 'playing'  // 添加 status 字段
+      status: 'playing',
+      hostId: room.hostId
     });
   });
   
@@ -164,10 +176,33 @@ io.on('connection', (socket) => {
   socket.on('getRoomState', (roomId, callback) => {
     const room = rooms.get(roomId);
     if (room) {
-      if (callback) callback({ success: true, room: room });
+      if (callback) callback({ 
+        success: true, 
+        room: room,
+        hostId: room.hostId,
+        gameReady: room.gameReady
+      });
     } else {
       if (callback) callback({ success: false, error: '房间不存在' });
     }
+  });
+  
+  // 房主通知游戏已准备好
+  socket.on('gameReady', (data) => {
+    const { roomId } = data;
+    const room = rooms.get(roomId);
+    if (!room) return;
+    
+    // 只有房主可以设置游戏准备状态
+    if (room.hostId !== socket.id) return;
+    
+    room.gameReady = true;
+    console.log(`游戏准备就绪 - 房间: ${roomId}`);
+    
+    // 通知所有玩家游戏已准备好
+    io.to(roomId).emit('gameReadyNotify', {
+      gameState: room.gameState
+    });
   });
   
   // 同步游戏状态
@@ -186,7 +221,8 @@ io.on('connection', (socket) => {
     // 广播给房间内其他玩家
     socket.to(roomId).emit('gameStateSync', {
       gameState: gameState,
-      fromPlayer: player.seat
+      fromPlayer: player.seat,
+      isHost: player.isHost
     });
   });
   
@@ -199,12 +235,31 @@ io.on('connection', (socket) => {
     const player = room.players.find(p => p.id === socket.id);
     if (!player) return;
     
-    // 广播操作给所有玩家
+    console.log(`玩家操作 - 房间: ${roomId}, 玩家: ${player.name}, 操作: ${action}`);
+    
+    // 广播操作给所有玩家（包括自己，用于确认）
     io.to(roomId).emit('actionBroadcast', {
       action: action,
       params: params,
       playerSeat: player.seat,
-      playerName: player.name
+      playerName: player.name,
+      isHost: player.isHost
+    });
+  });
+  
+  // 请求当前回合信息
+  socket.on('requestTurnInfo', (roomId, callback) => {
+    const room = rooms.get(roomId);
+    if (!room || !room.gameState) {
+      if (callback) callback({ success: false, error: '游戏未开始' });
+      return;
+    }
+    
+    if (callback) callback({
+      success: true,
+      turn: room.gameState.turn,
+      phase: room.gameState.phase,
+      hostId: room.hostId
     });
   });
   
@@ -216,6 +271,14 @@ io.on('connection', (socket) => {
       if (room.players.some(p => p.id === socket.id)) {
         leaveRoom(roomId, socket.id);
         broadcastRoomState(roomId);
+        
+        // 如果游戏正在进行，通知其他玩家
+        if (room.status === 'playing') {
+          io.to(roomId).emit('playerDisconnected', {
+            playerId: socket.id,
+            newHostId: room.hostId
+          });
+        }
       }
     }
   });
@@ -231,4 +294,3 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`Windows: ipconfig | findstr IPv4`);
   console.log(`Mac/Linux: ifconfig | grep inet`);
 });
-
