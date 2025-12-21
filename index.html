@@ -2773,7 +2773,8 @@ function doConcealedKong(pid, key) {
   
   pl.melds.push({ type: 'kong', tiles: tiles, concealed: true });
   S.kongCount++;
-  if (pid === 0) {
+  const myPSeatCK = getMyPlayerSeat();
+  if (pid === myPSeatCK) {
     log(`💥 ${playerName(pid)} 暗槓 ${keyToText(key)}`);
   } else {
     log(`💥 ${playerName(pid)} 暗槓`);
@@ -2797,13 +2798,13 @@ function doConcealedKong(pid, key) {
   renderAll();
   
   const t = pl.drawnTile || pl.hand[pl.hand.length - 1];
-  if (pid === 0) {
+  if (pid === myPSeatCK) {
     // 如果已經報聽，自動處理
     if (pl.declaredListen) {
       if (isWinningNow(pl.hand, pl.melds, t)) {
         // 自動胡牌
         setTimeout(() => {
-          doWin(0, -1, t, true);
+          doWin(myPSeatCK, -1, t, true);
         }, 500);
         return;
       }
@@ -2812,7 +2813,7 @@ function doConcealedKong(pid, key) {
         const testHand = pl.hand.filter(ht => ht !== pl.drawnTile);
         if (isListening(testHand, pl.melds)) {
           setTimeout(() => {
-            discard(0, pl.drawnTile);
+            discard(myPSeatCK, pl.drawnTile);
           }, 500);
           return;
         }
@@ -2901,14 +2902,15 @@ function doAddedKong(pid, meldIndex) {
   pl.rinshan = true;
   renderAll();
   
+  const myPSeatAK = getMyPlayerSeat();
   const t = pl.drawnTile || pl.hand[pl.hand.length - 1];
-  if (pid === 0) {
+  if (pid === myPSeatAK) {
     // 如果已經報聽，自動處理
     if (pl.declaredListen) {
       if (isWinningNow(pl.hand, pl.melds, t)) {
         // 自動胡牌
         setTimeout(() => {
-          doWin(0, -1, t, true);
+          doWin(myPSeatAK, -1, t, true);
         }, 500);
         return;
       }
@@ -2917,7 +2919,7 @@ function doAddedKong(pid, meldIndex) {
         const testHand = pl.hand.filter(ht => ht !== pl.drawnTile);
         if (isListening(testHand, pl.melds)) {
           setTimeout(() => {
-            discard(0, pl.drawnTile);
+            discard(myPSeatAK, pl.drawnTile);
           }, 500);
           return;
         }
@@ -3043,8 +3045,9 @@ function doKong(pid, tile) {
     syncGameStateToServer();
   }
   
-  if (pid === 0) {
-    const me = S.players[0];
+  const myPSeatKong = getMyPlayerSeat();
+  if (pid === myPSeatKong) {
+    const me = S.players[myPSeatKong];
     const t = me.drawnTile || me.hand[me.hand.length - 1];
     if (isWinningNow(me.hand, me.melds, t)) {
       document.getElementById('btnHu').disabled = false;
@@ -3053,7 +3056,7 @@ function doKong(pid, tile) {
     if (!me.declaredListen) {
       const kongCount = countKongs(me);
       const totalTiles = me.hand.length + me.melds.reduce((sum, m) => sum + m.tiles.length, 0);
-      const expectedFull = (S.dealer === 0 ? 17 : 16) + kongCount;
+      const expectedFull = (S.dealer === myPSeatKong ? 17 : 16) + kongCount;
       if (totalTiles === expectedFull) {
         const canListenNow = me.hand.some(tile2 => {
           const testHand = me.hand.filter(t => t !== tile2);
@@ -3112,7 +3115,7 @@ function discard(p, tile) {
     if (ting) {
       const waits = calcWaitingTiles(pl.hand, pl.melds);
       pl.waitKeys = waits.slice();
-      if (waits.length > 0 && p === 0) {
+      if (waits.length > 0 && p === getMyPlayerSeat()) {
         const waitText = waits.map(k => keyToText(k)).join(' ');
         log('👂 等牌：' + waitText);
       }
@@ -3155,23 +3158,25 @@ function discard(p, tile) {
   
   if (reactions.length > 0) {
     S.waitReact = reactions;
-    // 檢查玩家0是否能胡（榮胡）
-    const player0HuReact = reactions.find(r => r.pid === 0 && r.type === 'hu');
-    if (player0HuReact) {
-      const me = S.players[0];
+    const myPSeatDiscard = getMyPlayerSeat();
+    
+    // 檢查當前玩家是否能胡（榮胡）
+    const myHuReact = reactions.find(r => r.pid === myPSeatDiscard && r.type === 'hu');
+    if (myHuReact) {
+      const me = S.players[myPSeatDiscard];
       // 如果已經報聽，自動執行榮胡
       if (me.declaredListen) {
         setTimeout(() => {
-          doWin(0, p, player0HuReact.tile, false);
+          doWin(myPSeatDiscard, p, myHuReact.tile, false);
         }, 500); // 稍微延遲，讓玩家看到打出的牌
         return;
       }
     }
     
     // 如果已經報聽，檢查是否有可以自動執行的槓
-    const me = S.players[0];
+    const me = S.players[myPSeatDiscard];
     if (me.declaredListen) {
-      const kongReact = reactions.find(r => r.pid === 0 && r.type === 'kong');
+      const kongReact = reactions.find(r => r.pid === myPSeatDiscard && r.type === 'kong');
       if (kongReact) {
         // 檢查槓後是否會破壞聽牌
         const testHand = me.hand.filter(ht => ht !== tile);
@@ -3183,7 +3188,7 @@ function discard(p, tile) {
         if (isListening(testHand, testMelds)) {
           // 自動槓（不會破壞聽牌）
           setTimeout(() => {
-            doKong(0, tile);
+            doKong(myPSeatDiscard, tile);
           }, 500);
           return;
         }
@@ -3191,11 +3196,11 @@ function discard(p, tile) {
       }
     }
     
-    if (reactions.some(r => r.pid === 0)) {
+    if (reactions.some(r => r.pid === myPSeatDiscard)) {
       // 如果已經報聽，不顯示反應面板，直接自動處理或跳過
       if (me.declaredListen) {
         // 報聽後只能胡或槓，如果沒有可執行的，直接跳過
-        const validReactions = reactions.filter(r => r.pid === 0 && (r.type === 'hu' || r.type === 'kong'));
+        const validReactions = reactions.filter(r => r.pid === myPSeatDiscard && (r.type === 'hu' || r.type === 'kong'));
         if (validReactions.length === 0) {
           clearReactionButtons();
           S.turn = getNextTurn(S.lastDiscard.from);
@@ -3205,7 +3210,7 @@ function discard(p, tile) {
           return;
         }
       }
-      showReactionPanel(reactions.filter(r => r.pid === 0));
+      showReactionPanel(reactions.filter(r => r.pid === myPSeatDiscard));
     } else {
       setTimeout(() => handleAIReaction(reactions), 1000 + Math.random() * 1000);
     }
@@ -3222,7 +3227,8 @@ function discard(p, tile) {
 }
 
 function showReactionPanel(reactions) {
-  const me = S.players[0];
+  const myPSeatPanel = getMyPlayerSeat();
+  const me = S.players[myPSeatPanel];
   if (me.declaredListen) {
     // 報聽後只能胡或槓，不能碰或吃
     reactions = reactions.filter(r => r.type === 'hu' || r.type === 'kong');
@@ -3240,7 +3246,7 @@ function showReactionPanel(reactions) {
     if (huReact) {
       // 自動胡牌
       setTimeout(() => {
-        doWin(0, S.lastDiscard.from, huReact.tile, false);
+        doWin(myPSeatPanel, S.lastDiscard.from, huReact.tile, false);
       }, 500);
       return;
     }
@@ -3254,7 +3260,7 @@ function showReactionPanel(reactions) {
       if (isListening(testHand, testMelds)) {
         // 自動槓（不會破壞聽牌）
         setTimeout(() => {
-          doKong(0, kongReact.tile);
+          doKong(myPSeatPanel, kongReact.tile);
         }, 500);
         return;
       }
@@ -3397,11 +3403,12 @@ function showListenPanel() {
   overlay.classList.add('show');
   
   document.getElementById('listenYes').onclick = () => {
-    const me = S.players[0];
+    const myPSeatLP = getMyPlayerSeat();
+    const me = S.players[myPSeatLP];
     if (!me.declaredListen) {
       me.declaredListen = true;
       me.tingLocked = false;
-      updateTianDiTing(0);
+      updateTianDiTing(myPSeatLP);
       const waitKeys = calcWaitingTiles(me.hand, me.melds);
       const waitText = waitKeys.map(k => keyToText(k)).join(' ');
       if (me.tianTing) {
@@ -4602,7 +4609,7 @@ function draw(p) {
   S.drawCount++;
   SoundEffects.draw();
   
-  if (p === 0) {
+  if (p === getMyPlayerSeat()) {
     const k = tileKey(t);
     log(`🤲 你摸到 ${keyToText(k)}`);
   }
