@@ -5913,6 +5913,8 @@ function syncGameStateToServer() {
   if (!socket || !currentRoomId || !isOnlineMode || !S) return;
   
   // 包含所有需要同步的游戏状态
+  // 注意：服务器需要完整状态（包括所有玩家的 drawnTile）用于游戏逻辑
+  // 但在客户端接收时会清除其他玩家的 drawnTile（隐私保护）
   const fullState = JSON.parse(JSON.stringify(S));
   fullState.seatNames = seatNames ? [...seatNames] : null;
   fullState.dealerStreak = dealerStreak || 0;
@@ -5951,6 +5953,18 @@ function syncGameState(gameState, fromPlayerSeat) {
   // 深拷贝游戏状态
   try {
     S = JSON.parse(JSON.stringify(gameState));
+    
+    // 【重要】在连线模式下，清除其他玩家的 drawnTile（隐私保护）
+    // 只保留当前玩家的 drawnTile（如果有的话）
+    for (let i = 0; i < 4; i++) {
+      if (i !== myPSeatSync && S.players[i]) {
+        // 清除其他玩家的 drawnTile
+        if (S.players[i].drawnTile) {
+          console.log('清除其他玩家的 drawnTile:', i);
+          S.players[i].drawnTile = null;
+        }
+      }
+    }
     
     // 如果保留了 drawnTile，恢复它
     if (preserveDrawnTile && S.players[myPSeatSync]) {
