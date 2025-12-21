@@ -4765,6 +4765,11 @@ function renderAll() {
   const handKongCount = countKongs(me);
   const origTiles = me.hand.map((t, idx) => ({ tile: t, index: idx }));
   
+  // 调试：输出手牌和摸到的牌
+  if (gameMode === 'online') {
+    console.log('渲染手牌 - 座位:', myPlayerSeat, ', 手牌数:', me.hand.length, ', drawnTile:', me.drawnTile ? tileKey(me.drawnTile) : null);
+  }
+  
   // 檢查是否有摸到的牌
   // 摸到的牌應該是最後一張（因為draw函數使用push），或者通過drawnTile標記找到
   let drawnObj = null;
@@ -4775,8 +4780,10 @@ function renderAll() {
     const drawnIndex = me.hand.findIndex(t => {
       // 使用對象引用比較，如果失敗則使用屬性比較
       if (t === me.drawnTile) return true;
+      // 備用：比較tileKey（更可靠）
+      if (t && me.drawnTile && tileKey(t) === tileKey(me.drawnTile)) return true;
       // 備用：比較屬性
-      if (t && me.drawnTile && t.suit === me.drawnTile.suit && t.rank === me.drawnTile.rank) return true;
+      if (t && me.drawnTile && t.suit === me.drawnTile.suit && t.rank === me.drawnTile.rank && t.name === me.drawnTile.name) return true;
       return false;
     });
     
@@ -4787,6 +4794,7 @@ function renderAll() {
         .sort((a, b) => tileSortKey(a.tile) - tileSortKey(b.tile));
     } else if (me.hand.length > 0) {
       // 如果找不到，使用最後一張牌（因為draw使用push）
+      console.log('找不到drawnTile，使用最後一張', me.drawnTile, me.hand);
       const lastIdx = me.hand.length - 1;
       drawnObj = origTiles[lastIdx];
       displayRest = origTiles.slice(0, -1)
@@ -5892,10 +5900,23 @@ function syncGameState(gameState) {
     }
     
     console.log('游戏状态同步完成, 当前回合:', S.turn, ', 莊家:', S.dealer);
-    log(`🔄 遊戲狀態已同步`);
     
     // 强制重新渲染
     renderAll();
+    
+    // 检查是否轮到当前玩家的回合
+    const myPSeatSync = getMyPlayerSeat();
+    const myPlayer = S.players[myPSeatSync];
+    
+    // 如果轮到当前玩家的回合，且没有 drawnTile，且没有等待反应，需要触发 stepNext
+    // 但要避免重复触发（检查 lastAction 是否是 discard）
+    if (S.turn === myPSeatSync && !myPlayer.drawnTile && !S.waitReact && S.phase !== 'end') {
+      // 只有在上一个动作是出牌时才触发摸牌
+      if (S.lastAction === 'discard' || S.lastAction === 'kong' || S.lastAction === 'pong' || S.lastAction === 'chow') {
+        console.log('轮到当前玩家回合，触发 stepNext, lastAction:', S.lastAction);
+        setTimeout(stepNext, 300);
+      }
+    }
   } catch (e) {
     console.error('syncGameState 错误:', e);
   }
