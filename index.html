@@ -3222,6 +3222,8 @@ function discard(p, tile) {
     S.waitReact = null; // 清除waitReact
     // 移除回合切換log顯示
     renderAll(); // 先更新UI顯示回合變化
+    // 确保标志已重置，然后调用 stepNext
+    isProcessingStep = false;
     stepNext();
   }
 }
@@ -4231,8 +4233,22 @@ function stepNext() {
   const myPSeat = getMyPlayerSeat();
   
   if (S.turn === myPSeat) {
-    // 玩家的回合，先摸牌
+    // 防止重复调用
+    if (isProcessingStep) {
+      console.log('⚠️ stepNext: 正在处理中，跳过重复调用');
+      return;
+    }
+    
+    // 检查是否已经有 drawnTile（不应该发生，但作为保护）
     const me = S.players[myPSeat];
+    if (me.drawnTile) {
+      console.log('⚠️ stepNext: 已经有 drawnTile，跳过摸牌:', tileKey(me.drawnTile));
+      return;
+    }
+    
+    isProcessingStep = true;
+    
+    // 玩家的回合，先摸牌
     const hadDrawnTile = me.drawnTile; // 記錄之前是否有摸到的牌
     
     console.log('stepNext: 玩家摸牌前, 手牌数:', me.hand.length, ', drawnTile:', me.drawnTile ? tileKey(me.drawnTile) : null);
@@ -4249,12 +4265,14 @@ function stepNext() {
         S.phase = 'end';
         S.winner = null;
     renderAll();
+        isProcessingStep = false;
         setTimeout(() => showHandsAndContinue(), 1000);
         return;
       }
       // 如果還有牌但摸牌失敗，記錄錯誤
       log('⚠️ 摸牌失敗，但還有牌');
       renderAll();
+      isProcessingStep = false;
       return;
     }
     
@@ -4268,6 +4286,7 @@ function stepNext() {
     if (isWinningNow(me.hand, me.melds, t)) {
         // 如果已經報聽，自動胡牌
         if (me.declaredListen) {
+          isProcessingStep = false; // 重置标志，因为会调用 doWin
           setTimeout(() => {
             doWin(myPSeat, -1, t, true);
           }, 500); // 稍微延遲，讓玩家看到摸到的牌
@@ -4275,6 +4294,7 @@ function stepNext() {
         } else {
       document.getElementById('btnHu').disabled = false;
       log('✨ 你可以自摸（按「胡牌」）或繼續出牌');
+          isProcessingStep = false; // 重置标志，等待玩家操作
           return; // 如果能胡，不自動丟牌
         }
       }
@@ -4309,6 +4329,7 @@ function stepNext() {
           
           if (validKongs.length > 0) {
             // 自動加槓（不會破壞聽牌）
+            isProcessingStep = false; // 重置标志，因为会调用 doAddedKong
             setTimeout(() => {
               doAddedKong(myPSeat, validKongs[0].meldIndex);
             }, 500);
@@ -4334,6 +4355,7 @@ function stepNext() {
             // 檢查暗槓後是否還能聽牌
             if (isListening(testHand, testMelds)) {
               // 自動暗槓（不會破壞聽牌）
+              isProcessingStep = false; // 重置标志，因为会调用 doConcealedKong
               setTimeout(() => {
                 doConcealedKong(myPSeat, drawnKey);
               }, 500);
@@ -4350,6 +4372,7 @@ function stepNext() {
           
           if (canKeepListening) {
             // 如果能保持聽牌，自動丟掉摸到的牌
+            isProcessingStep = false; // 重置标志，因为会调用 discard
             setTimeout(() => {
               discard(myPSeat, me.drawnTile);
             }, 500); // 稍微延遲，讓玩家看到摸到的牌
@@ -4357,6 +4380,11 @@ function stepNext() {
           }
         }
       }
+    }
+    
+    // 如果没有自动操作，重置标志，等待玩家手动操作
+    if (isProcessingStep && S.turn === myPSeat) {
+      isProcessingStep = false;
     }
   } else {
     // AI 回合（在连线模式下，只有 AI 玩家才自动出牌）
@@ -5555,6 +5583,7 @@ let currentRoomId = null;
 let mySeat = -1;
 let isOnlineMode = false;
 let onlinePlayers = [];
+let isProcessingStep = false; // 防止 stepNext 重复调用
 
 // 关闭连线面板的可靠函数
 function closeOnlinePanel() {
@@ -5962,9 +5991,11 @@ function syncGameState(gameState, fromPlayerSeat) {
     console.log('syncGameState 检查回合: turn=', S.turn, ', mySeat=', myPSeatSync, ', drawnTile=', myPlayer.drawnTile ? 'yes' : 'no', ', waitReact=', S.waitReact, ', lastAction=', S.lastAction);
     
     // 如果轮到当前玩家的回合，且没有 drawnTile，且没有等待反应，需要触发 stepNext
-    if (S.turn === myPSeatSync && !myPlayer.drawnTile && !S.waitReact && S.phase !== 'end') {
+    if (S.turn === myPSeatSync && !myPlayer.drawnTile && !S.waitReact && S.phase !== 'end' && !isProcessingStep) {
       console.log('轮到当前玩家回合，触发 stepNext');
       setTimeout(stepNext, 300);
+    } else if (isProcessingStep) {
+      console.log('⚠️ syncGameState: stepNext 正在处理中，跳过触发');
     }
   } catch (e) {
     console.error('syncGameState 错误:', e);
