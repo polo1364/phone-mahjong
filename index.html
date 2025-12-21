@@ -9,19 +9,23 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg-primary: #0a1628;
-  --bg-secondary: #162236;
-  --bg-card: #1e3a5f;
-  --accent-gold: #f0c14b;
-  --accent-jade: #2dd4bf;
+  --bg-primary: #f0f4f8;
+  --bg-secondary: #ffffff;
+  --bg-card: #f8fafc;
+  --accent-gold: #fbbf24;
+  --accent-jade: #10b981;
   --accent-red: #ef4444;
   --accent-blue: #3b82f6;
   --accent-green: #22c55e;
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --border-subtle: rgba(255,255,255,0.08);
-  --glow-gold: rgba(240,193,75,0.4);
-  --glow-jade: rgba(45,212,191,0.3);
+  --accent-pink: #ec4899;
+  --accent-purple: #a855f7;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --border-subtle: rgba(0,0,0,0.08);
+  --glow-gold: rgba(251,191,36,0.3);
+  --glow-jade: rgba(16,185,129,0.3);
+  --shadow-light: rgba(0,0,0,0.05);
+  --shadow-medium: rgba(0,0,0,0.1);
   
   --tile-wan: #dc2626;
   --tile-tong: #2563eb;
@@ -47,10 +51,8 @@ html, body {
 
 body {
   font-family: 'Noto Sans TC', system-ui, -apple-system, sans-serif;
-  background: var(--bg-primary);
-  background-image: 
-    radial-gradient(ellipse at 20% 0%, rgba(45,212,191,0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 100%, rgba(240,193,75,0.06) 0%, transparent 50%);
+  background: linear-gradient(135deg, #f0f4f8 0%, #e0e7ff 50%, #fef3c7 100%);
+  background-attachment: fixed;
   color: var(--text-primary);
   min-height: 100vh;
   min-height: 100dvh;
@@ -65,12 +67,13 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px;
-  padding-top: calc(10px + var(--safe-top));
-  background: linear-gradient(180deg, rgba(30,58,95,0.95) 0%, rgba(22,34,54,0.9) 100%);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  padding: 12px 16px;
+  padding-top: calc(12px + var(--safe-top));
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border-subtle);
+  box-shadow: 0 2px 12px var(--shadow-light);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -82,24 +85,26 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: linear-gradient(135deg, var(--accent-gold) 0%, #d4a03a 100%);
-  color: var(--bg-primary);
-  padding: 6px 14px;
-  border-radius: 20px;
+  background: linear-gradient(135deg, var(--accent-gold) 0%, #f59e0b 100%);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 24px;
   font-weight: 700;
-  font-size: 13px;
-  box-shadow: 0 2px 12px var(--glow-gold);
+  font-size: 14px;
+  box-shadow: 0 4px 12px var(--glow-gold);
 }
 
 .remain-badge {
   display: flex;
   align-items: center;
   gap: 4px;
-  background: rgba(255,255,255,0.08);
-  padding: 6px 12px;
-  border-radius: 16px;
-  font-size: 12px;
+  background: rgba(255,255,255,0.8);
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 13px;
   color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 2px 8px var(--shadow-light);
 }
 
 .remain-badge strong {
@@ -113,8 +118,8 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 6px 8px;
+  gap: 8px;
+  padding: 12px 12px;
   overflow-y: auto;
   min-height: 0;
   max-height: calc(100vh - 500px);
@@ -123,17 +128,20 @@ body {
 }
 
 .opponent-card {
-  background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-secondary) 100%);
-  border: 1px solid var(--border-subtle);
-  border-radius: 10px;
-  padding: 8px 10px;
+  background: rgba(255,255,255,0.9);
+  border: 2px solid var(--border-subtle);
+  border-radius: 16px;
+  padding: 12px 14px;
   transition: all 0.3s ease;
   flex-shrink: 0;
+  box-shadow: 0 2px 8px var(--shadow-light);
 }
 
 .opponent-card.active-turn {
   border-color: var(--accent-gold);
-  box-shadow: 0 0 20px var(--glow-gold), inset 0 0 30px rgba(240,193,75,0.05);
+  background: linear-gradient(135deg, #fef3c7 0%, #ffffff 100%);
+  box-shadow: 0 4px 20px var(--glow-gold), 0 0 0 3px rgba(251,191,36,0.2);
+  transform: scale(1.02);
 }
 
 .opponent-header {
@@ -146,23 +154,24 @@ body {
 .opponent-name {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-weight: 600;
-  font-size: 14px;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text-primary);
 }
 
 .wind-icon {
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--accent-jade) 0%, #14b8a6 100%);
-  color: var(--bg-primary);
-  border-radius: 6px;
+  background: linear-gradient(135deg, var(--accent-jade) 0%, #059669 100%);
+  color: white;
+  border-radius: 10px;
   font-weight: 800;
-  font-size: 13px;
-  box-shadow: 0 2px 8px var(--glow-jade);
+  font-size: 15px;
+  box-shadow: 0 3px 10px var(--glow-jade);
 }
 
 .dealer-mark {
@@ -203,9 +212,10 @@ body {
 }
 
 .opponent-score {
-  font-weight: 700;
-  font-size: 15px;
+  font-weight: 800;
+  font-size: 16px;
   color: var(--accent-jade);
+  text-shadow: 0 1px 2px var(--shadow-light);
 }
 
 .opponent-content {
@@ -216,17 +226,16 @@ body {
 
 .discard-zone {
   flex: 1;
-  min-height: 32px;
-  max-height: 60px;
-  background: rgba(0,0,0,0.2);
-  border-radius: 6px;
-  padding: 4px;
+  min-height: 36px;
+  background: rgba(241,245,249,0.8);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 6px;
   display: flex;
   flex-wrap: wrap;
-  gap: 2px;
+  gap: 3px;
   align-content: flex-start;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  overflow: visible;
 }
 
 .discard-zone-label {
@@ -247,20 +256,21 @@ body {
 
 .meld-group {
   display: flex;
-  gap: 2px;
-  padding: 4px;
-  background: rgba(45,212,191,0.1);
-  border-radius: 6px;
+  gap: 3px;
+  padding: 6px;
+  background: linear-gradient(135deg, rgba(16,185,129,0.1) 0%, rgba(16,185,129,0.05) 100%);
+  border: 1px solid rgba(16,185,129,0.2);
+  border-radius: 10px;
 }
 
 /* ===== 牌面樣式 ===== */
 .tile {
-  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
-  border: 1.5px solid #cbd5e1;
-  border-radius: 5px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
   font-weight: 700;
   text-align: center;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.8);
+  box-shadow: 0 3px 6px var(--shadow-light), inset 0 1px 0 rgba(255,255,255,0.9);
   user-select: none;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   display: inline-flex;
@@ -321,37 +331,39 @@ body {
 /* 摸到的牌 */
 .tile.drawn {
   border: 3px solid var(--accent-gold);
-  background: linear-gradient(180deg, #fff9e6 0%, #ffffff 100%);
-  box-shadow: 0 2px 8px rgba(240,193,75,0.5);
+  background: linear-gradient(180deg, #fef3c7 0%, #ffffff 100%);
+  box-shadow: 0 4px 12px var(--glow-gold), 0 0 0 2px rgba(251,191,36,0.3);
+  transform: scale(1.05);
 }
 
 /* ===== 戰況面板 ===== */
 .log-panel {
-  background: rgba(0,0,0,0.4);
-  border-top: 1px solid var(--border-subtle);
+  background: rgba(255,255,255,0.95);
+  border-top: 2px solid var(--border-subtle);
   padding: 0;
-  height: 90px;
+  height: 100px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   position: relative;
+  box-shadow: 0 -2px 12px var(--shadow-light);
 }
 
 .log-header {
-  padding: 4px 12px;
-  font-size: 10px;
+  padding: 8px 14px;
+  font-size: 12px;
   color: var(--text-secondary);
-  font-weight: 600;
+  font-weight: 700;
   border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
-  background: rgba(0,0,0,0.2);
+  background: rgba(241,245,249,0.8);
 }
 
 #log {
-  font-size: 11px;
-  line-height: 1.6;
-  color: var(--text-secondary);
-  padding: 8px 12px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-primary);
+  padding: 10px 14px;
   overflow-y: auto;
   overflow-x: hidden;
   flex: 1;
@@ -381,10 +393,10 @@ body {
 
 /* ===== 我的手牌區 ===== */
 .my-hand-area {
-  background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-card) 100%);
-  border-top: 2px solid var(--accent-jade);
-  padding: 10px 8px calc(14px + var(--safe-bottom));
-  box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+  background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,0.95) 100%);
+  border-top: 3px solid var(--accent-jade);
+  padding: 14px 10px calc(16px + var(--safe-bottom));
+  box-shadow: 0 -4px 24px var(--shadow-medium);
   position: relative;
   z-index: 10;
   flex-shrink: 0;
@@ -407,13 +419,15 @@ body {
 }
 
 .hand-title .wind-icon {
-  background: linear-gradient(135deg, var(--accent-gold) 0%, #d4a03a 100%);
+  background: linear-gradient(135deg, var(--accent-gold) 0%, #f59e0b 100%);
+  box-shadow: 0 3px 10px var(--glow-gold);
 }
 
 .my-score {
-  font-size: 18px;
-  font-weight: 800;
+  font-size: 20px;
+  font-weight: 900;
   color: var(--accent-jade);
+  text-shadow: 0 2px 4px var(--shadow-light);
 }
 
 .listen-hint {
@@ -515,8 +529,8 @@ body {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent-jade) 0%, #14b8a6 100%);
-  color: var(--bg-primary);
+  background: linear-gradient(135deg, var(--accent-jade) 0%, #059669 100%);
+  color: white;
   box-shadow: 0 4px 12px var(--glow-jade);
 }
 
@@ -525,9 +539,10 @@ body {
 }
 
 .btn-secondary {
-  background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-secondary) 100%);
+  background: rgba(255,255,255,0.9);
   color: var(--text-primary);
-  border: 1px solid var(--border-subtle);
+  border: 2px solid var(--border-subtle);
+  box-shadow: 0 2px 8px var(--shadow-light);
 }
 
 .btn-secondary:not(:disabled):active {
@@ -536,8 +551,8 @@ body {
 }
 
 .btn-gold {
-  background: linear-gradient(135deg, var(--accent-gold) 0%, #d4a03a 100%);
-  color: var(--bg-primary);
+  background: linear-gradient(135deg, var(--accent-gold) 0%, #f59e0b 100%);
+  color: white;
   box-shadow: 0 4px 12px var(--glow-gold);
 }
 
@@ -553,12 +568,22 @@ body {
 
 .btn.active {
   animation: btn-glow 1s ease-in-out infinite;
-  transform: scale(1.05);
+  transform: scale(1.08);
+  border: 3px solid var(--accent-gold) !important;
+  box-shadow: 0 0 25px var(--glow-gold), 0 4px 20px rgba(251,191,36,0.5) !important;
+  z-index: 10;
+  position: relative;
 }
 
 @keyframes btn-glow {
-  0%, 100% { box-shadow: 0 0 20px var(--glow-gold); }
-  50% { box-shadow: 0 0 30px var(--glow-gold), 0 0 40px var(--glow-gold); }
+  0%, 100% { 
+    box-shadow: 0 0 25px var(--glow-gold), 0 4px 20px rgba(251,191,36,0.5);
+    border-color: var(--accent-gold);
+  }
+  50% { 
+    box-shadow: 0 0 40px var(--glow-gold), 0 0 50px rgba(251,191,36,0.7), 0 6px 30px rgba(251,191,36,0.6);
+    border-color: #fbbf24;
+  }
 }
 
 .btn-icon {
@@ -573,9 +598,9 @@ body {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.7);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   z-index: 200;
   display: none;
   align-items: center;
@@ -590,14 +615,14 @@ body {
 }
 
 .modal-content {
-  background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-secondary) 100%);
-  border: 1px solid var(--border-subtle);
-  border-radius: 20px;
-  padding: 24px;
+  background: rgba(255,255,255,0.98);
+  border: 2px solid var(--border-subtle);
+  border-radius: 24px;
+  padding: 28px;
   max-width: 90%;
   max-height: 85vh;
   overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  box-shadow: 0 20px 60px var(--shadow-medium);
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
   margin: auto;
@@ -1090,6 +1115,9 @@ body {
   <button class="btn btn-gold" id="newGameBtn" style="padding: 8px 12px; min-width: auto; flex: none; font-size: 12px;">
     <span style="font-size: 12px;">🎮 新局</span>
   </button>
+  <button class="btn btn-secondary" id="settingsBtn" style="padding: 8px 12px; min-width: auto; flex: none; font-size: 12px;">
+    <span style="font-size: 12px;">⚙️ 設定</span>
+  </button>
 </div>
 
 
@@ -1178,6 +1206,181 @@ function initAudio() {
     } catch (e) {
       soundEnabled = false;
     }
+  }
+}
+
+// 語音播報系統
+let speechSynthesis = null;
+let voiceEnabled = true;
+let currentUtterance = null;
+
+function initSpeech() {
+  if ('speechSynthesis' in window) {
+    speechSynthesis = window.speechSynthesis;
+    voiceEnabled = true;
+  } else {
+    voiceEnabled = false;
+  }
+}
+
+// 停止當前語音
+function stopSpeech() {
+  if (speechSynthesis && currentUtterance) {
+    speechSynthesis.cancel();
+    currentUtterance = null;
+  }
+}
+
+// 語音播報函數
+function speakText(text, options = {}) {
+  if (!voiceEnabled || !speechSynthesis) return;
+  
+  // 停止之前的語音
+  stopSpeech();
+  
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = 'zh-TW';
+  utterance.rate = options.rate || 1.0;
+  utterance.pitch = options.pitch || 1.0;
+  utterance.volume = options.volume || 0.8;
+  
+  // 選擇中文語音
+  const voices = speechSynthesis.getVoices();
+  const chineseVoice = voices.find(v => v.lang.includes('zh') || v.lang.includes('TW') || v.lang.includes('CN')) || voices[0];
+  if (chineseVoice) {
+    utterance.voice = chineseVoice;
+  }
+  
+  currentUtterance = utterance;
+  speechSynthesis.speak(utterance);
+  
+  utterance.onend = () => {
+    currentUtterance = null;
+  };
+  
+  utterance.onerror = () => {
+    currentUtterance = null;
+  };
+}
+
+// 語音內容庫
+const VoiceMessages = {
+  chow: [
+    '吃！',
+    '吃牌！',
+    '我吃！',
+    '吃一張！',
+    '吃你一張！',
+    '吃掉了！',
+    '順子來了！'
+  ],
+  pong: [
+    '碰！',
+    '碰牌！',
+    '我碰！',
+    '碰了！',
+    '碰你一張！',
+    '三張一樣！',
+    '碰起來！'
+  ],
+  kong: [
+    '槓！',
+    '槓牌！',
+    '我槓！',
+    '槓了！',
+    '四張一樣！',
+    '槓起來！',
+    '大槓！'
+  ],
+  listen: [
+    '聽牌！',
+    '報聽！',
+    '我聽牌了！',
+    '聽牌囉！',
+    '準備胡牌！',
+    '等牌了！',
+    '聽牌成功！',
+    '準備自摸！',
+    '等胡牌！'
+  ],
+  win: [
+    '胡了！',
+    '胡牌！',
+    '我胡了！',
+    '自摸！',
+    '點胡！',
+    '太棒了！',
+    '贏了！',
+    '勝利！',
+    '自摸胡牌！',
+    '點胡成功！',
+    '太厲害了！',
+    '完美！'
+  ],
+  drawGame: [
+    '流局！',
+    '流局了！',
+    '這局流局！',
+    '沒人胡牌！',
+    '流局結束！',
+    '和局！',
+    '平手！'
+  ],
+  newGame: [
+    '新局開始！',
+    '新的一局！',
+    '開始新局！',
+    '準備開始！',
+    '新局來了！',
+    '重新開始！',
+    '新的一輪！'
+  ],
+  dealer: [
+    '莊家！',
+    '我是莊家！',
+    '當莊！',
+    '莊家連莊！',
+    '我當莊！',
+    '莊家是我！'
+  ],
+  dealerStreak: [
+    '連莊！',
+    '繼續當莊！',
+    '連莊成功！',
+    '莊家連莊！',
+    '又連莊了！',
+    '繼續連莊！',
+    '連莊中！'
+  ]
+};
+
+// 隨機選擇語音
+function getRandomVoice(type) {
+  const messages = VoiceMessages[type];
+  if (!messages || messages.length === 0) return '';
+  return messages[Math.floor(Math.random() * messages.length)];
+}
+
+// 將牌名轉換為語音播報格式
+function tileNameForSpeech(tileText) {
+  // 特殊字牌的念法
+  if (tileText === '中') return '紅中';
+  if (tileText === '發') return '發財';
+  if (tileText === '白') return '白板';
+  // 風字的念法
+  if (tileText === '東') return '東風';
+  if (tileText === '南') return '南風';
+  if (tileText === '西') return '西風';
+  if (tileText === '北') return '北風';
+  // 其他牌名保持不變
+  return tileText;
+}
+
+// 語音播報函數（帶隨機選擇）
+function speakRandom(type, customText = null) {
+  const text = customText || getRandomVoice(type);
+  if (text) {
+    speakText(text, { rate: 1.0, pitch: 1.0, volume: 0.8 });
   }
 }
 
@@ -1409,39 +1612,40 @@ function shuffle(a) {
 const RULES = {
   handSize: 16,
   scoring: {
-    // 基本台型
+    // 基礎與基本分
+    Dealer: 1,                // 莊家（已在連莊台數中處理）
+    ConcealedHand: 1,         // 門清
     SelfDraw: 1,              // 自摸
-    MenqingSelfDraw: 3,       // 門清自摸
-    DeclaredListen: 1,        // 報聽
-    EarthReady: 4,            // 地聽
-    HeavenReady: 8,           // 天聽
+    NoNeedOthers: 2,          // 不求人（門清+自摸）
     
-    // 特殊牌型
-    AllPungs: 2,              // 對對胡
-    HalfFlush: 3,             // 混一色
-    PureOneSuit: 5,           // 清一色
-    AllChows: 1,              // 全求人（全部吃碰）
-    ThreeConcealedPungs: 2,    // 三暗刻
-    FourConcealedPungs: 5,    // 四暗刻
-    FiveConcealedPungs: 8,    // 五暗刻
+    // 組合牌型（中級）
+    AllChows: 2,              // 全求人
+    PingHu: 2,                // 平胡
+    ThreeConcealedPungs: 2,   // 三暗刻
+    AllPungs: 4,              // 對對胡
+    HalfFlush: 4,             // 湊一色（混一色）
+    FourConcealedPungs: 8,      // 四暗刻
     
-    // 三元牌
+    // 字牌相關
     BigThreeDragons: 8,       // 大三元
     LittleThreeDragons: 4,    // 小三元
+    BigFourWinds: 16,         // 大四喜
+    LittleFourWinds: 8,       // 小四喜
+    AllHonors: 16,            // 字一色
     
-    // 四喜牌
-    BigFourWinds: 8,          // 大四喜
-    LittleFourWinds: 4,       // 小四喜
-    
-    // 字牌組合
-    AllHonors: 8,             // 字一色
-    AllTerminals: 8,          // 清老頭
-    AllTerminalsAndHonors: 4, // 混老頭
+    // 特殊高階牌型
+    PureOneSuit: 8,           // 清一色
+    FiveConcealedPungs: 8,    // 五暗刻
+    HeavenWin: 20,            // 天胡（取中間值20台）
+    EarthWin: 20,             // 地胡（取中間值20台）
+    HumanWin: 12,             // 人胡（取中間值12台）
     
     // 特殊牌型
     NineGates: 8,             // 九蓮寶燈
     FourKongs: 8,             // 四槓子
     ThreeKongs: 2,            // 三槓子
+    AllTerminals: 8,          // 清老頭
+    AllTerminalsAndHonors: 4, // 混老頭
     
     // 特殊情況
     RobKong: 1,               // 搶槓
@@ -1453,6 +1657,11 @@ const RULES = {
     SeatWind: 1,              // 座風
     RoundWind: 1,             // 圈風
     
+    // 報聽相關（保留用於顯示）
+    DeclaredListen: 1,        // 報聽
+    EarthReady: 4,            // 地聽
+    HeavenReady: 8,           // 天聽
+    
     // 花牌（如果有）
     Flower: 1,
   },
@@ -1460,18 +1669,47 @@ const RULES = {
   initialPoints: 100000
 };
 
+// 遊戲設定（可修改）
+let GAME_SETTINGS = {
+  basePoints: 2000,      // 底台
+  perFanPoints: 1000,   // 每台
+  initialPoints: 100000, // 初始資金
+  playerNames: null      // 玩家名字（null表示使用隨機名字）
+};
+
 let S = null;
 let seatNames = ['東','南','西','北'];
 
 function getNextTurn(currentTurn) {
-  // 順時針順序：0(東) -> 1(南) -> 2(西) -> 3(北) -> 0
-  const clockwiseOrder = [0, 1, 2, 3];
-  const currentIndex = clockwiseOrder.indexOf(currentTurn);
-  return clockwiseOrder[(currentIndex + 1) % 4];
+  // 逆時針順序：0(東) -> 3(北) -> 2(西) -> 1(南) -> 0
+  const counterclockwiseOrder = [0, 3, 2, 1];
+  const currentIndex = counterclockwiseOrder.indexOf(currentTurn);
+  return counterclockwiseOrder[(currentIndex + 1) % 4];
 }
 
 const NAME_POOL = [
-  '小明','小華','小美','阿珍','志強','志玲','建國','玉梅','阿芬','國華','美惠','政宏','淑芬','志豪','秋香','佩玲','欣怡','家豪','明慧','建萱'
+  // 台灣藝人
+  '周杰倫','蔡依林','林志穎','王力宏','蕭敬騰','張惠妹','五月天','陳奕迅','梁靜茹','孫燕姿',
+  '蔡健雅','戴佩妮','楊丞琳','王心凌','張韶涵','范瑋琪','徐若瑄','林依晨','陳喬恩','安以軒',
+  '郭采潔','桂綸鎂','陳意涵','郭碧婷','林志玲','舒淇','張鈞甯','許瑋甯','謝金燕','蔡詩芸',
+  '田馥甄','任家萱','陳嘉樺','羅志祥','潘瑋柏','吳克群','林俊傑','陶喆','周傳雄','張信哲',
+  '伍佰','李宗盛','周華健','任賢齊','張震','彭于晏','阮經天','趙又廷','陳柏霖','柯震東',
+  '王大陸','許光漢','林柏宏','劉以豪','邱澤','楊祐寧','張孝全','鳳小岳','陳柏霖','李李仁',
+  // 日本藝人
+  '木村拓哉','新垣結衣','石原里美','長澤雅美','堺雅人','福山雅治','山下智久','小栗旬','松本潤','二宮和也',
+  '大野智','相葉雅紀','櫻井翔','生田斗真','三浦春馬','佐藤健','菅田將暉','山崎賢人','神木隆之介','橋本環奈',
+  '濱邊美波','廣瀨鈴','有村架純','上白石萌音','永野芽郁','吉高由里子','滿島光','蒼井優','宮崎葵','多部未華子',
+  '戶田惠梨香','新木優子','中條彩未','小松菜奈','能年玲奈','黑木華','安藤櫻','松岡茉優','土屋太鳳','川口春奈',
+  '福士蒼汰','坂口健太郎','橫濱流星','吉澤亮','龍星涼','竹內涼真','中島健人','平野紫耀','道枝駿佑','目黑蓮',
+  // 韓國藝人
+  '金秀賢','全智賢','宋慧喬','李敏鎬','朴信惠','李鍾碩','孔劉','宋仲基','朴寶劍','李棟旭',
+  '玄彬','蘇志燮','池昌旭','南柱赫','朴敘俊','金宇彬','李昇基','劉亞仁','曹政奭','柳俊烈',
+  '金高銀','朴敏英','金智媛','韓孝周','申敏兒','韓佳人','孫藝珍','全智賢','宋智孝','李知恩',
+  '裴秀智','金所炫','金裕貞','金賽綸','金泰梨','朴寶英','韓志旼','李聖經','徐玄振','朴恩斌',
+  '金多美','全汝彬','韓素希','金惠允','田美都','鄭有美','金喜善','李英愛','河智苑','崔智友',
+  '李孝利','寶兒','太妍','潤娥','徐玄','秀英','蒂芬妮','孝淵','俞利','允兒',
+  '智秀','珍妮','羅婕','麗莎','娜璉','定延','志效','多賢','彩瑛','子瑜',
+  '玟星','輝人','華莎','頌樂','瑟琪','溫蒂','澀琪','艾琳','藝琳','珠泫'
 ];
 
 let randomNames = null;
@@ -1490,35 +1728,65 @@ function startNewHand(isFirstGame = false) {
     const diceSum = dice1 + dice2;
     newDealer = (diceSum - 1) % 4;
     newRound = 1;
-    // 順時針順序：0(東) -> 1(南) -> 2(西) -> 3(北) -> 0
-    const clockwiseOrder = [0, 1, 2, 3];
+    // 逆時針順序：0(東) -> 3(北) -> 2(西) -> 1(南) -> 0
+    // 風位分配：莊家是東，逆時針依次是北、西、南（但風位名稱保持東南西北順序）
+    const counterclockwiseOrder = [0, 3, 2, 1];
     seatNames = [];
     for (let offset = 0; offset < 4; offset++) {
-      const dealerIndex = clockwiseOrder.indexOf(newDealer);
-      const playerPos = clockwiseOrder[(dealerIndex + offset) % 4];
-      seatNames[playerPos] = ['東', '南', '西', '北'][offset];
+      const dealerIndex = counterclockwiseOrder.indexOf(newDealer);
+      const playerPos = counterclockwiseOrder[(dealerIndex + offset) % 4];
+      const windOrder = ['東', '南', '西', '北'];
+      seatNames[playerPos] = windOrder[offset];
     }
     const dealerWindInit = seatNames[newDealer];
     const dealerNameInit = dealerWindInit + '家' + (newDealer === 0 ? '(你)' : '');
-    const pool = NAME_POOL.slice();
-    const names = [];
-    for (let i = 0; i < 4; i++) {
-      const rIndex = Math.floor(Math.random() * pool.length);
-      names.push(pool.splice(rIndex, 1)[0]);
+    // 使用設定中的名字或隨機名字
+    if (GAME_SETTINGS.playerNames && GAME_SETTINGS.playerNames.length >= 4) {
+      randomNames = GAME_SETTINGS.playerNames.slice(0, 4);
+    } else {
+      const pool = NAME_POOL.slice();
+      const names = [];
+      for (let i = 0; i < 4; i++) {
+        const rIndex = Math.floor(Math.random() * pool.length);
+        names.push(pool.splice(rIndex, 1)[0]);
+      }
+      randomNames = names;
     }
-    randomNames = names;
     log(`🎲 擲骰：${dice1} + ${dice2} = ${diceSum}，莊家為${dealerNameInit}`);
+    
+    // 語音播報新局
+    if (isFirstGame) {
+      speakRandom('newGame');
+    }
+    
+    // 語音播報莊家
+    if (newDealer === 0) {
+      speakRandom('dealer');
+    }
   } else if (S.winner === null) {
     log(`🔁 流局連莊，莊家繼續當莊`);
     newDealer = S.dealer; // 流局連莊，莊家不變
+    
+    // 語音播報流局
+    speakRandom('drawGame');
+    
+    // 語音播報莊家
+    if (newDealer === 0) {
+      speakRandom('dealer');
+    }
   } else if (S.winner === S.dealer) {
     log(`🏆 莊家胡牌，繼續當莊`);
     newDealer = S.dealer; // 莊家胡牌，繼續當莊
+    
+    // 語音播報莊家連莊
+    if (newDealer === 0) {
+      speakRandom('dealerStreak');
+    }
   } else {
-    // 順時針順序：0(東) -> 1(南) -> 2(西) -> 3(北) -> 0
-    const clockwiseOrder = [0, 1, 2, 3];
-    const currentIndex = clockwiseOrder.indexOf(S.dealer);
-    newDealer = clockwiseOrder[(currentIndex + 1) % 4];
+    // 逆時針順序：0(東) -> 3(北) -> 2(西) -> 1(南) -> 0
+    const counterclockwiseOrder = [0, 3, 2, 1];
+    const currentIndex = counterclockwiseOrder.indexOf(S.dealer);
+    newDealer = counterclockwiseOrder[(currentIndex + 1) % 4];
     if (newDealer === S.initialDealer) {
       newRound++;
       if (newRound > 4) {
@@ -1531,6 +1799,11 @@ function startNewHand(isFirstGame = false) {
     const rotatedWind = seatNames?.[newDealer] || ['東','南','西','北'][newDealer];
     const rotatedName = rotatedWind + '家' + (newDealer === 0 ? '(你)' : '');
     log(`🔁 莊家輪替至${rotatedName}`);
+    
+    // 語音播報莊家
+    if (newDealer === 0) {
+      speakRandom('dealer');
+    }
   }
 
   if (isFirstGame || !S) {
@@ -1541,6 +1814,11 @@ function startNewHand(isFirstGame = false) {
       dealerStreak = (S.dealerStreak || 0) + 1;
       if (dealerStreak > 1) {
         log(`🔄 連莊 ${dealerStreak} 次`);
+      }
+      
+      // 語音播報連莊
+      if (newDealer === 0 && dealerStreak > 0) {
+        speakRandom('dealerStreak');
       }
     } else {
       // 莊家輪替，重置連莊次數
@@ -1556,7 +1834,7 @@ function startNewHand(isFirstGame = false) {
       discards: [],
       flowers: [],
       melds: [],
-      points: prevNames ? S.players[i].points : RULES.initialPoints,
+      points: prevNames ? S.players[i].points : GAME_SETTINGS.initialPoints,
       declaredListen: false,
       waitKeys: [],
       tianTing: false,
@@ -2042,11 +2320,11 @@ function canChow(pid, tile) {
   const pl = S.players[pid];
   if (pl.melds.length >= 5) return [];
   
-  // 順時針順序：0(東) -> 1(南) -> 2(西) -> 3(北) -> 0
-  // 吃只能吃上家的牌，上家是順時針的前一個
-  const clockwiseOrder = [0, 1, 2, 3];
-  const currentIndex = clockwiseOrder.indexOf(S.turn);
-  const nextPlayer = clockwiseOrder[(currentIndex + 1) % 4];
+  // 逆時針順序：0(東) -> 3(北) -> 2(西) -> 1(南) -> 0
+  // 吃只能吃上家的牌，上家是逆時針的前一個
+  const counterclockwiseOrder = [0, 3, 2, 1];
+  const currentIndex = counterclockwiseOrder.indexOf(S.turn);
+  const nextPlayer = counterclockwiseOrder[(currentIndex + 1) % 4];
   if (pid !== nextPlayer) return [];
   
   if (tile.suit !== SUIT_W && tile.suit !== SUIT_T && tile.suit !== SUIT_B) return [];
@@ -2098,6 +2376,9 @@ function doChow(pid, tile, pattern) {
   showEffect('🍜 吃', '#22c55e');
   SoundEffects.chow();
   
+  // 語音播報（所有玩家都播報）
+  speakRandom('chow');
+  
   S.turn = pid;
   S.lastDiscard = null;
   S.waitReact = null;
@@ -2130,7 +2411,12 @@ function canConcealedKong(pid) {
   if (countKongs(pl) >= 3) return [];
   if (pl.melds.length >= 5) return [];
   if ((S.wall.length + S.deadWall.length) <= 3) return [];
-  const counts = countByKey(pl.hand);
+  // 檢查手牌和剛摸到的牌（drawnTile）
+  const allTiles = pl.hand.slice();
+  if (pl.drawnTile) {
+    allTiles.push(pl.drawnTile);
+  }
+  const counts = countByKey(allTiles);
   return Object.keys(counts).filter(k => counts[k] >= 4);
 }
 
@@ -2156,6 +2442,8 @@ function canAddedKong(pid) {
 function doConcealedKong(pid, key) {
   const pl = S.players[pid];
   const tiles = [];
+  
+  // 先從手牌中收集相同key的牌
   for (let i = pl.hand.length - 1; i >= 0; i--) {
     const t = pl.hand[i];
     if (tileKey(t) === key) {
@@ -2163,6 +2451,28 @@ function doConcealedKong(pid, key) {
       if (tiles.length === 4) break;
     }
   }
+  
+  // 如果還沒收集到4張，檢查drawnTile
+  if (tiles.length < 4 && pl.drawnTile && tileKey(pl.drawnTile) === key) {
+    // 找到drawnTile在手牌中的位置並移除
+    const drawnIdx = pl.hand.findIndex(t => t === pl.drawnTile);
+    if (drawnIdx >= 0) {
+      tiles.push(pl.hand.splice(drawnIdx, 1)[0]);
+    } else {
+      // 如果drawnTile不在手牌中，直接使用
+      tiles.push(pl.drawnTile);
+      pl.drawnTile = null;
+    }
+  }
+  
+  // 確保收集到4張牌
+  if (tiles.length !== 4) {
+    log(`⚠️ 暗槓錯誤：只收集到 ${tiles.length} 張牌，需要4張`);
+    // 將已移除的牌放回手牌
+    pl.hand.push(...tiles);
+    return;
+  }
+  
   pl.melds.push({ type: 'kong', tiles: tiles, concealed: true });
   S.kongCount++;
   if (pid === 0) {
@@ -2172,6 +2482,9 @@ function doConcealedKong(pid, key) {
   }
   showEffect('💥 暗槓', '#a855f7');
   SoundEffects.kong();
+  
+  // 語音播報（所有玩家都播報）
+  speakRandom('kong');
   
   if (S.deadWall.length > 0) {
     const newTile = S.deadWall.pop();
@@ -2251,6 +2564,9 @@ function doAddedKong(pid, meldIndex) {
   showEffect('💥 槓', '#f97316');
   SoundEffects.kong();
   
+  // 語音播報（所有玩家都播報）
+  speakRandom('kong');
+  
   if (S.deadWall.length > 0) {
     const newTile = S.deadWall.pop();
     pl.hand.push(newTile);
@@ -2298,6 +2614,10 @@ function doPong(pid, tile) {
   log(`🔥 ${playerName(pid)} 碰了 ${keyToText(k)}`);
   showEffect('🔥 碰', '#f0c14b');
   SoundEffects.pong();
+  
+  // 語音播報（所有玩家都播報）
+  speakRandom('pong');
+  
   S.turn = pid;
   S.lastDiscard = null;
   S.waitReact = null;
@@ -2321,6 +2641,9 @@ function doKong(pid, tile) {
   log(`💥 ${playerName(pid)} 槓了 ${keyToText(k)}，從王牌補牌`);
   showEffect('💥 槓', '#f97316');
   SoundEffects.kong();
+  
+  // 語音播報（所有玩家都播報）
+  speakRandom('kong');
   
   if (S.deadWall.length > 0) {
     const newTile = S.deadWall.pop();
@@ -2373,7 +2696,12 @@ function discard(p, tile) {
   
   S.lastAction = 'discard';
   S.lastActor = p;
-  log(`🎴 ${playerName(p)} 打出 ${keyToText(tileKey(tile))}`);
+  const tileText = keyToText(tileKey(tile));
+  log(`🎴 ${playerName(p)} 打出 ${tileText}`);
+  
+  // 語音播報丟牌（所有玩家都播報）
+  const speechText = tileNameForSpeech(tileText);
+  speakText(speechText, { rate: 1.0, pitch: 1.0, volume: 0.8 });
   
   S.players[p].rinshan = false;
   renderAll();
@@ -2751,6 +3079,15 @@ function canWinOn(pid, tile) {
   return isWinningNow(tmp, pl.melds, tile);
 }
 
+// 計算連莊台數：2n + 1（n為連莊次數）
+function calcDealerStreakFan(streak) {
+  // streak = 0 表示起莊（第一次當莊），台數為 1
+  // streak = 1 表示連一，台數為 2×1+1 = 3
+  // streak = 2 表示連二，台數為 2×2+1 = 5
+  // 以此類推
+  return 2 * streak + 1;
+}
+
 function doWin(winner, from, tile, selfDraw) {
   S.winner = winner;
   S.fromPlayer = from;
@@ -2759,23 +3096,65 @@ function doWin(winner, from, tile, selfDraw) {
   showEffect('🎉 胡了！', '#f0c14b', '64px');
   SoundEffects.win();
   
+  // 語音播報（所有玩家都播報）
+  if (selfDraw) {
+    speakRandom('win', '自摸！');
+  } else {
+    speakRandom('win', '點胡！');
+  }
+  
   const detail = calcFanDetails(winner, tile, selfDraw);
   const fan = detail.fan;
-  const delta = RULES.points.base + fan * RULES.points.perFan;
+  
+  // 計算連莊台數
+  const dealerStreak = S.dealerStreak || 0;
+  const streakFan = calcDealerStreakFan(dealerStreak);
+  const isDealer = winner === S.dealer;
+  const isFromDealer = from === S.dealer;
+  
+  // 計算基本分數（牌型台數）
+  const baseDelta = GAME_SETTINGS.basePoints + fan * GAME_SETTINGS.perFanPoints;
   
   const catStr = detail.categories.join('、');
+  
   if (selfDraw) {
-    for (let i = 0; i < 4; i++) {
-      if (i !== winner) {
-        S.players[i].points -= delta;
+    // 自摸情況
+    if (isDealer) {
+      // 莊家自摸：向每位閒家收取「牌型台數 + 連莊台數」
+      const totalDelta = baseDelta + streakFan * GAME_SETTINGS.perFanPoints;
+      for (let i = 0; i < 4; i++) {
+        if (i !== winner) {
+          S.players[i].points -= totalDelta;
+        }
       }
+      S.players[winner].points += totalDelta * 3;
+      const streakText = dealerStreak > 0 ? `，連莊${dealerStreak}次加${streakFan}台` : '';
+      log(`🎉 ${playerName(winner)} 自摸 ${keyToText(tileKey(tile))}（${catStr}，共${fan}台${streakText}）→ 每家付 ${totalDelta.toLocaleString()}`);
+    } else {
+      // 閒家自摸：與連莊台數無關，僅計算牌型台數
+      for (let i = 0; i < 4; i++) {
+        if (i !== winner) {
+          S.players[i].points -= baseDelta;
+        }
+      }
+      S.players[winner].points += baseDelta * 3;
+      log(`🎉 ${playerName(winner)} 自摸 ${keyToText(tileKey(tile))}（${catStr}，共${fan}台）→ 每家付 ${baseDelta.toLocaleString()}`);
     }
-    S.players[winner].points += delta * 3;
-    log(`🎉 ${playerName(winner)} 自摸 ${keyToText(tileKey(tile))}（${catStr}，共${fan}台）→ 每家付 ${delta.toLocaleString()}`);
   } else {
-    S.players[from].points -= delta * 3;
-    S.players[winner].points += delta * 3;
-    log(`🎉 ${playerName(winner)} 點胡 ${playerName(from)}（${keyToText(tileKey(tile))}，${catStr}，共${fan}台）→ 放槍者付 ${(delta * 3).toLocaleString()}`);
+    // 點胡情況
+    if (isFromDealer) {
+      // 閒家胡莊家：莊家需支付「牌型台數 + 連莊台數」給該閒家
+      const totalDelta = baseDelta + streakFan * GAME_SETTINGS.perFanPoints;
+      S.players[from].points -= totalDelta * 3;
+      S.players[winner].points += totalDelta * 3;
+      const streakText = dealerStreak > 0 ? `，連莊${dealerStreak}次加${streakFan}台` : '';
+      log(`🎉 ${playerName(winner)} 點胡 ${playerName(from)}（${keyToText(tileKey(tile))}，${catStr}，共${fan}台${streakText}）→ 放槍者付 ${(totalDelta * 3).toLocaleString()}`);
+    } else {
+      // 閒家胡閒家：與莊家的連莊台數無關，僅計算牌型台數
+      S.players[from].points -= baseDelta * 3;
+      S.players[winner].points += baseDelta * 3;
+      log(`🎉 ${playerName(winner)} 點胡 ${playerName(from)}（${keyToText(tileKey(tile))}，${catStr}，共${fan}台）→ 放槍者付 ${(baseDelta * 3).toLocaleString()}`);
+    }
   }
   
   renderAll();
@@ -2899,10 +3278,10 @@ function calcFanDetails(winner, winTile, selfDraw) {
     categories.push('清一色');
   } else if (nz === 1 && honors > 0) {
     fan += RULES.scoring.HalfFlush;
-    categories.push('混一色');
+    categories.push('湊一色');
   }
   
-  // 對對胡
+  // 對對胡（4台）：全部由刻子與一個對子組成
   const kinds = countByKey(pl.hand.concat([winTile]));
   const allTrip = isAllPungsPossible(kinds);
   if (allTrip) {
@@ -2910,10 +3289,16 @@ function calcFanDetails(winner, winTile, selfDraw) {
     categories.push('對對胡');
   }
   
-  // 全求人
+  // 全求人（2台）
   if (checkAllChows(pl)) {
     fan += RULES.scoring.AllChows;
     categories.push('全求人');
+  }
+  
+  // 平胡（2台）：全順子、無刻、無字、非砍對、非單吊
+  if (checkPingHu(pl, winTile)) {
+    fan += RULES.scoring.PingHu;
+    categories.push('平胡');
   }
   
   // ========= 特殊情況 =========
@@ -2943,29 +3328,45 @@ function calcFanDetails(winner, winTile, selfDraw) {
     categories.push('圈風');
   }
   
-    // 自摸相關
+  // 基礎台數：門清、自摸、不求人
+  const menqing = pl.melds.length === 0 || pl.melds.every(m => m.concealed);
+  
   if (selfDraw) {
-    const menqing = pl.melds.length === 0;
-    if (menqing) {
-      fan += RULES.scoring.MenqingSelfDraw;
-      categories.push('門清自摸');
-    } else {
-      fan += RULES.scoring.SelfDraw;
-      categories.push('自摸');
-    }
+    // 自摸：1台
+    fan += RULES.scoring.SelfDraw;
+    categories.push('自摸');
     
-    // 海底撈月：自摸最後一張牌（牌山已空，從王牌摸最後一張）
-    const dead = 16 + S.kongCount;
-    if (S.wall.length === 0 && S.deadWall.length > 0 && S.deadWall.length <= dead) {
-      fan += RULES.scoring.Haitei;
-      categories.push('海底撈月');
+    // 門清：1台（胡牌前沒有吃、碰、明槓）
+    if (menqing) {
+      fan += RULES.scoring.ConcealedHand;
+      categories.push('門清');
+      
+      // 不求人：2台（門清+自摸，但這裡門清和自摸已經各加1台，所以不求人只需要額外加1台，總共2台）
+      // 實際上不求人 = 門清(1) + 自摸(1) = 2台，所以不需要額外加
+      // 但為了明確標示，我們可以檢查是否同時滿足門清和自摸
+      // 注意：這裡門清和自摸已經各加1台，所以不求人總共是2台，符合規則
     }
   } else {
+    // 非自摸：檢查門清
+    if (menqing) {
+      fan += RULES.scoring.ConcealedHand;
+      categories.push('門清');
+    }
+    
     // 河底撈魚：胡別人打的最後一張牌（牌山和王牌都已空）
     const dead = 16 + S.kongCount;
     if (S.wall.length === 0 && S.deadWall.length === 0) {
       fan += RULES.scoring.Houtei;
       categories.push('河底撈魚');
+    }
+  }
+  
+  // 海底撈月：自摸最後一張牌（牌山已空，從王牌摸最後一張）
+  if (selfDraw) {
+    const dead = 16 + S.kongCount;
+    if (S.wall.length === 0 && S.deadWall.length > 0 && S.deadWall.length <= dead) {
+      fan += RULES.scoring.Haitei;
+      categories.push('海底撈月');
     }
   }
   
@@ -2982,7 +3383,23 @@ function calcFanDetails(winner, winTile, selfDraw) {
   }
   
   
-  // 如果沒有任何台型，算平胡
+  // 檢查天胡、地胡、人胡（優先判定）
+  const heavenWin = checkHeavenWin(pl, selfDraw, winner);
+  const earthWin = checkEarthWin(pl, selfDraw, winner);
+  const humanWin = checkHumanWin(pl, selfDraw, winner);
+  
+  if (heavenWin) {
+    fan += RULES.scoring.HeavenWin;
+    categories.push('天胡');
+  } else if (earthWin) {
+    fan += RULES.scoring.EarthWin;
+    categories.push('地胡');
+  } else if (humanWin) {
+    fan += RULES.scoring.HumanWin;
+    categories.push('人胡');
+  }
+  
+  // 如果沒有任何台型，算平胡（但平胡已經在上面檢查過了）
   if (categories.length === 0) {
     categories.push('平胡');
     fan = 1; // 平胡至少1台
@@ -3010,6 +3427,80 @@ function checkAllChows(pl) {
   if (pl.melds.length < 5) return false;
   const allChowsOrPongs = pl.melds.every(m => m.type === 'chow' || m.type === 'pong');
   return allChowsOrPongs && pl.hand.length === 1;
+}
+
+// 平胡檢查：全順子、無刻、無字、非砍對、非單吊
+function checkPingHu(pl, winTile) {
+  // 不能有刻子（碰、槓）
+  const hasPungOrKong = pl.melds.some(m => m.type === 'pong' || m.type === 'kong');
+  if (hasPungOrKong) return false;
+  
+  // 不能有字牌
+  const allTiles = pl.hand.concat([winTile]).concat(pl.melds.flatMap(m => m.tiles));
+  const hasHonor = allTiles.some(t => t.suit === SUIT_F || t.suit === SUIT_D);
+  if (hasHonor) return false;
+  
+  // 必須全部是順子（吃）
+  const allChows = pl.melds.every(m => m.type === 'chow');
+  if (!allChows && pl.melds.length > 0) return false;
+  
+  // 檢查手牌是否都是順子（使用canSplitMelds檢查）
+  const testHand = pl.hand.concat([winTile]);
+  const counts = countByKey(testHand);
+  
+  // 計算需要的順子數量（扣除已有的吃）
+  const chowCount = pl.melds.filter(m => m.type === 'chow').length;
+  const neededChows = 5 - chowCount;
+  
+  // 檢查是否能分解為順子和一個對子
+  // 先找對子
+  let pairFound = false;
+  const countsCopy = {};
+  for (const k in counts) {
+    countsCopy[k] = counts[k];
+  }
+  
+  for (const k in countsCopy) {
+    if (countsCopy[k] >= 2) {
+      countsCopy[k] -= 2;
+      pairFound = true;
+      break;
+    }
+  }
+  
+  if (!pairFound) return false;
+  
+  // 剩下的必須能組成順子
+  return canSplitMelds(countsCopy, neededChows);
+}
+
+// 天胡檢查：莊家起手17張牌直接胡牌
+// 天胡檢查：莊家起手17張牌直接胡牌
+function checkHeavenWin(pl, selfDraw, winner) {
+  if (!selfDraw) return false;
+  if (pl.drawCount !== 1) return false; // 只摸過一次牌（起手）
+  if (S.dealer !== winner) return false; // 必須是莊家
+  return true;
+}
+
+// 地胡檢查：閒家起手聽牌，在第一巡內摸牌即胡（需無人吃碰）
+function checkEarthWin(pl, selfDraw, winner) {
+  if (!selfDraw) return false;
+  if (S.dealer === winner) return false; // 不能是莊家
+  if (pl.drawCount > 1) return false; // 第一巡內（只摸過一次牌）
+  if (S.anyOpenMeld) return false; // 需無人吃碰
+  if (!pl.diTing) return false; // 必須是地聽
+  return true;
+}
+
+// 人胡檢查：閒家起手聽牌，在第一巡內由他人放銃胡牌
+function checkHumanWin(pl, selfDraw, winner) {
+  if (selfDraw) return false; // 必須是點胡
+  if (S.dealer === winner) return false; // 不能是莊家
+  if (pl.drawCount > 1) return false; // 第一巡內（只摸過一次牌）
+  if (S.anyOpenMeld) return false; // 需無人吃碰
+  if (!pl.diTing) return false; // 必須是地聽
+  return true;
 }
 
 function checkConcealedPungs(pl) {
@@ -3315,6 +3806,10 @@ function stepAI() {
         log('🚫 流局 - 牌山枯竭');
         S.phase = 'end';
         S.winner = null;
+        
+        // 語音播報
+        speakRandom('drawGame');
+        
         renderAll();
         setTimeout(() => showHandsAndContinue(), 1000);
         return;
@@ -3406,6 +3901,9 @@ function stepAI() {
     pl.declaredListen = true;
     updateTianDiTing(pid);
     log(`🔔 ${playerName(pid)} 報聽`);
+    
+    // 語音播報（所有玩家都播報）
+    speakRandom('listen');
     }
   }
   
@@ -3643,6 +4141,13 @@ function renderAll() {
         btnHu.disabled = false;
       }
     }
+    // 如果沒有drawnTile，檢查手牌最後一張（可能是剛摸到的牌，例如槓牌後）
+    if (!me.drawnTile && me.hand.length > 0) {
+      const lastTile = me.hand[me.hand.length - 1];
+      if (isWinningNow(me.hand, me.melds, lastTile)) {
+        btnHu.disabled = false;
+      }
+    }
     // 檢查榮胡：如果有lastDiscard且能胡
     if (S.lastDiscard && S.lastDiscard.from !== 0) {
       if (canWinOn(0, S.lastDiscard.tile)) {
@@ -3715,6 +4220,9 @@ function showHandsAndContinue() {
   } else {
     html += '<div class="modal-title">🚫 流局</div>';
     html += '<div style="text-align: center; color: var(--text-secondary); margin-bottom: 16px;">牌山枯竭</div>';
+    
+    // 語音播報
+    speakRandom('drawGame');
   }
   
   html += '<div class="modal-section-title">所有玩家手牌</div>';
@@ -3808,10 +4316,19 @@ document.getElementById('btnHu').onclick = () => {
     handleHuClick();
   } else {
     const me = S.players[0];
-    const kongCount = countKongs(me);
-    const expectedFull = (S.dealer === 0 ? 17 : 16) + kongCount;
-    const total = me.hand.length + me.melds.reduce((sum, m) => sum + m.tiles.length, 0);
-    if (total === expectedFull && me.hand.length > 0) {
+    // 自摸情況：優先檢查drawnTile
+    if (me.drawnTile) {
+      // 檢查drawnTile是否在手牌中
+      const drawnInHand = me.hand.find(t => t === me.drawnTile || 
+        (t.suit === me.drawnTile.suit && t.rank === me.drawnTile.rank && 
+         (!t.name || t.name === me.drawnTile.name)));
+      if (drawnInHand && isWinningNow(me.hand, me.melds, me.drawnTile)) {
+        doWin(0, -1, me.drawnTile, true);
+        return;
+      }
+    }
+    // 如果沒有drawnTile，檢查手牌最後一張（可能是剛摸到的牌，例如槓牌後）
+    if (me.hand.length > 0) {
       const lastTile = me.hand[me.hand.length - 1];
       if (isWinningNow(me.hand, me.melds, lastTile)) {
         doWin(0, -1, lastTile, true);
@@ -3924,6 +4441,10 @@ document.getElementById('btnListen').onclick = () => {
   me.waitKeys = waits.slice();
   SoundEffects.listen();
   showEffect('🔔 聽牌', '#2dd4bf', '44px');
+  
+  // 語音播報
+  speakRandom('listen');
+  
   renderAll();
 };
 
@@ -3956,7 +4477,7 @@ document.getElementById('btnKong').onclick = () => {
 
 document.getElementById('newGameBtn').onclick = () => {
   initAudio();
-  S = { players: Array.from({ length: 4 }, () => ({ points: RULES.initialPoints })) };
+  S = { players: Array.from({ length: 4 }, () => ({ points: GAME_SETTINGS.initialPoints })) };
   document.getElementById('log').innerHTML = '';
   dealerStreak = 0;
   startNewHand(true);
@@ -4037,6 +4558,94 @@ function onClickYourTile(idx) {
 }
 
 /* ========= 啟動遊戲 ========= */
+// 初始化語音系統
+initSpeech();
+
+// 等待語音列表載入
+if ('speechSynthesis' in window) {
+  speechSynthesis.onvoiceschanged = () => {
+    // 語音列表已載入
+  };
+}
+
+// 顯示設定界面
+function showSettings() {
+  const overlay = document.getElementById('modalOverlay');
+  const content = document.getElementById('modalContent');
+  
+  let html = '<div class="modal-title">⚙️ 遊戲設定</div>';
+  html += '<div style="display: flex; flex-direction: column; gap: 16px;">';
+  
+  // 底台設定
+  html += '<div class="modal-section">';
+  html += '<label style="display: block; margin-bottom: 8px; font-weight: 700; color: var(--text-primary);">底台（基本分數）</label>';
+  html += `<input type="number" id="settingBasePoints" value="${GAME_SETTINGS.basePoints}" min="100" max="10000" step="100" style="width: 100%; padding: 10px; border: 2px solid var(--border-subtle); border-radius: 8px; font-size: 16px;">`;
+  html += '</div>';
+  
+  // 每台設定
+  html += '<div class="modal-section">';
+  html += '<label style="display: block; margin-bottom: 8px; font-weight: 700; color: var(--text-primary);">每台分數</label>';
+  html += `<input type="number" id="settingPerFanPoints" value="${GAME_SETTINGS.perFanPoints}" min="100" max="10000" step="100" style="width: 100%; padding: 10px; border: 2px solid var(--border-subtle); border-radius: 8px; font-size: 16px;">`;
+  html += '</div>';
+  
+  // 初始資金設定
+  html += '<div class="modal-section">';
+  html += '<label style="display: block; margin-bottom: 8px; font-weight: 700; color: var(--text-primary);">初始資金</label>';
+  html += `<input type="number" id="settingInitialPoints" value="${GAME_SETTINGS.initialPoints}" min="10000" max="1000000" step="10000" style="width: 100%; padding: 10px; border: 2px solid var(--border-subtle); border-radius: 8px; font-size: 16px;">`;
+  html += '</div>';
+  
+  // 玩家名字設定
+  html += '<div class="modal-section">';
+  html += '<label style="display: block; margin-bottom: 8px; font-weight: 700; color: var(--text-primary);">玩家名字（留空使用隨機名字，每行一個，至少4個）</label>';
+  const namesText = GAME_SETTINGS.playerNames ? GAME_SETTINGS.playerNames.join('\n') : '';
+  html += `<textarea id="settingPlayerNames" rows="4" placeholder="例如：\n周杰倫\n蔡依林\n林志穎\n王力宏" style="width: 100%; padding: 10px; border: 2px solid var(--border-subtle); border-radius: 8px; font-size: 14px; resize: vertical;">${namesText}</textarea>`;
+  html += '</div>';
+  
+  html += '<div style="display: flex; gap: 12px; margin-top: 8px;">';
+  html += '<button class="btn btn-primary" id="saveSettings" style="flex: 1; padding: 12px;">💾 儲存</button>';
+  html += '<button class="btn btn-secondary" id="cancelSettings" style="flex: 1; padding: 12px;">取消</button>';
+  html += '</div>';
+  html += '</div>';
+  
+  content.innerHTML = html;
+  overlay.classList.add('show');
+  
+  document.getElementById('saveSettings').onclick = () => {
+    const basePoints = parseInt(document.getElementById('settingBasePoints').value) || 2000;
+    const perFanPoints = parseInt(document.getElementById('settingPerFanPoints').value) || 1000;
+    const initialPoints = parseInt(document.getElementById('settingInitialPoints').value) || 100000;
+    const namesText = document.getElementById('settingPlayerNames').value.trim();
+    
+    GAME_SETTINGS.basePoints = basePoints;
+    GAME_SETTINGS.perFanPoints = perFanPoints;
+    GAME_SETTINGS.initialPoints = initialPoints;
+    
+    if (namesText) {
+      const names = namesText.split('\n').filter(n => n.trim()).map(n => n.trim());
+      if (names.length >= 4) {
+        GAME_SETTINGS.playerNames = names;
+      } else {
+        alert('玩家名字至少需要4個！');
+        return;
+      }
+    } else {
+      GAME_SETTINGS.playerNames = null;
+    }
+    
+    overlay.classList.remove('show');
+    log('⚙️ 遊戲設定已更新');
+  };
+  
+  document.getElementById('cancelSettings').onclick = () => {
+    overlay.classList.remove('show');
+  };
+}
+
+document.getElementById('settingsBtn').onclick = () => {
+  initAudio();
+  showSettings();
+};
+
 startNewHand(true);
 </script>
 </body>
