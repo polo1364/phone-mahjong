@@ -218,12 +218,23 @@ io.on('connection', (socket) => {
     // 保存游戏状态
     room.gameState = gameState;
     
-    // 广播给房间内其他玩家
-    socket.to(roomId).emit('gameStateSync', {
-      gameState: gameState,
-      fromPlayer: player.seat,
-      isHost: player.isHost
-    });
+    // 【重要】如果是房主，立即广播给所有玩家（包括房主自己），确保战况即时更新
+    // 如果不是房主，只广播给其他玩家
+    if (player.isHost) {
+      // 房主的状态：广播给所有玩家
+      io.to(roomId).emit('gameStateSync', {
+        gameState: gameState,
+        fromPlayer: player.seat,
+        isHost: true
+      });
+    } else {
+      // 非房主的状态：只广播给其他玩家
+      socket.to(roomId).emit('gameStateSync', {
+        gameState: gameState,
+        fromPlayer: player.seat,
+        isHost: false
+      });
+    }
   });
   
   // 玩家操作（出牌、碰、杠、吃、胡等）
@@ -247,17 +258,26 @@ io.on('connection', (socket) => {
     });
     
     // 【重要】如果房间有最新的游戏状态，立即广播给其他玩家，确保战况即时更新
-    // 注意：游戏状态应该由客户端通过 gameStateUpdate 更新
-    // 这里只是提醒其他玩家可能需要请求最新状态
+    // 特别是房主的状态，应该立即广播给所有玩家
     if (room.gameState) {
       // 延迟一点，等待客户端更新状态
       setTimeout(() => {
-        socket.to(roomId).emit('gameStateSync', {
-          gameState: room.gameState,
-          fromPlayer: player.seat,
-          isHost: player.isHost
-        });
-      }, 100);
+        if (player.isHost) {
+          // 房主的状态：广播给所有玩家（包括房主自己）
+          io.to(roomId).emit('gameStateSync', {
+            gameState: room.gameState,
+            fromPlayer: player.seat,
+            isHost: true
+          });
+        } else {
+          // 非房主的状态：只广播给其他玩家
+          socket.to(roomId).emit('gameStateSync', {
+            gameState: room.gameState,
+            fromPlayer: player.seat,
+            isHost: false
+          });
+        }
+      }, 150);
     }
   });
   

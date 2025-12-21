@@ -6215,8 +6215,17 @@ function initOnline() {
   });
   
   socket.on('gameStateSync', (data) => {
-    if (data.fromPlayer !== mySeat && isOnlineMode) {
-      syncGameState(data.gameState, data.fromPlayer);
+    if (isOnlineMode) {
+      // 【重要】如果是房主的状态，所有玩家都应该同步
+      // 如果不是房主的状态，非房主也应该同步（因为房主会转发）
+      if (data.isHost || !isHost) {
+        // 房主的状态：所有玩家都同步
+        // 非房主的状态：非房主玩家也同步（房主会转发）
+        if (data.fromPlayer !== mySeat) {
+          console.log('收到状态同步, fromPlayer:', data.fromPlayer, ', isHost:', data.isHost);
+          syncGameState(data.gameState, data.fromPlayer);
+        }
+      }
     }
   });
   
@@ -6753,17 +6762,21 @@ function handleRemoteAction(data) {
   }
   
   // 【重要】延迟请求状态同步，确保战况即时更新
-  // 延迟一点时间，等待操作玩家先同步状态到服务器
-  // 因为其他玩家的操作会改变游戏状态（分数、手牌数、剩余牌数等），需要立即同步
-  if (socket && currentRoomId) {
+  // 非房主玩家总是请求房主的状态，因为房主的状态是最权威的
+  // 房主的状态包含了所有玩家的最新战况（分数、手牌数、剩余牌数等）
+  if (socket && currentRoomId && !isHost) {
     setTimeout(() => {
       socket.emit('getRoomState', currentRoomId, (response) => {
         if (response.success && response.room && response.room.gameState) {
-          console.log('handleRemoteAction: 请求状态同步，确保战况即时更新');
-          syncGameState(response.room.gameState, playerSeat);
+          console.log('handleRemoteAction: 非房主请求房主状态同步，确保战况即时更新, action:', action);
+          // 从房主同步状态（房主的状态是最权威的）
+          syncGameState(response.room.gameState, null);
         }
       });
-    }, 200); // 延迟200ms，等待操作玩家同步状态
+    }, 300); // 延迟300ms，等待房主同步状态
+  } else if (isHost) {
+    // 房主：确保状态已同步（应该已经通过 syncGameStateToServer 同步了）
+    console.log('handleRemoteAction: 房主收到操作, action:', action, ', 状态应该已同步');
   }
 }
 
