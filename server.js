@@ -7,6 +7,14 @@ const cors = require('cors');
 const app = express();
 app.use(cors());
 
+// 提供静态文件服务（index.html）
+app.use(express.static(__dirname));
+
+// 根路径返回 index.html
+app.get('/', (req, res) => {
+  res.sendFile(__dirname + '/index.html');
+});
+
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
