@@ -5726,33 +5726,71 @@ function initOnlineGame(data) {
   const isHost = data.players?.find(p => p.id === socket?.id)?.isHost || false;
   console.log('是否是房主:', isHost);
   
-  // 初始化游戏
-  S = null;
-  dealerStreak = 0;
+  // 清空日志
   document.getElementById('log').innerHTML = '';
-  
-  startNewHand(true);
   log('🎮 連線遊戲開始！');
   log(`📍 你的座位: ${mySeat}, 連線模式: ${isOnlineMode}`);
   
-  // 游戏初始化完成后同步状态
-  setTimeout(() => {
-    if (S && S.round) {
-      if (isHost) {
-        console.log('房主同步游戏状态...');
+  if (isHost) {
+    // 房主：生成游戏状态并同步给其他玩家
+    console.log('房主生成游戏状态...');
+    S = null;
+    dealerStreak = 0;
+    startNewHand(true);
+    
+    // 延迟同步，确保游戏初始化完成
+    setTimeout(() => {
+      if (S && S.round) {
+        console.log('房主同步游戏状态给其他玩家...');
         syncGameStateToServer();
+      }
+    }, 300);
+  } else {
+    // 非房主：等待房主同步游戏状态
+    console.log('非房主等待游戏状态同步...');
+    log('⏳ 等待房主同步遊戲狀態...');
+    
+    // 显示等待界面
+    S = null;
+    
+    // 持续请求游戏状态，直到收到
+    let retryCount = 0;
+    const maxRetries = 20;
+    
+    function requestGameState() {
+      if (S && S.round) {
+        console.log('已收到游戏状态');
+        return;
+      }
+      
+      retryCount++;
+      if (retryCount > maxRetries) {
+        console.warn('请求游戏状态超时');
+        log('❌ 同步超時，請重新加入房間');
+        return;
+      }
+      
+      console.log(`请求游戏状态... (尝试 ${retryCount}/${maxRetries})`);
+      
+      if (socket && currentRoomId) {
+        socket.emit('getRoomState', currentRoomId, (response) => {
+          if (response.success && response.room && response.room.gameState) {
+            console.log('收到游戏状态:', response.room.gameState);
+            syncGameState(response.room.gameState);
+            renderAll();
+          } else {
+            // 继续重试
+            setTimeout(requestGameState, 500);
+          }
+        });
       } else {
-        console.log('非房主请求游戏状态...');
-        if (socket && currentRoomId) {
-          socket.emit('getRoomState', currentRoomId, (response) => {
-            if (response.success && response.room && response.room.gameState) {
-              syncGameState(response.room.gameState);
-            }
-          });
-        }
+        setTimeout(requestGameState, 500);
       }
     }
-  }, 500);
+    
+    // 开始请求
+    setTimeout(requestGameState, 500);
+  }
 }
 
 // 開始遊戲（所有玩家都會收到 gameStarted 事件）
@@ -5791,9 +5829,16 @@ function startOnlineGame(data) {
 function syncGameStateToServer() {
   if (!socket || !currentRoomId || !isOnlineMode || !S) return;
   
+  // 包含所有需要同步的游戏状态
+  const fullState = JSON.parse(JSON.stringify(S));
+  fullState.seatNames = seatNames ? [...seatNames] : null;
+  fullState.dealerStreak = dealerStreak || 0;
+  
+  console.log('同步游戏状态到服务器:', fullState);
+  
   socket.emit('gameStateUpdate', {
     roomId: currentRoomId,
-    gameState: JSON.parse(JSON.stringify(S))
+    gameState: fullState
   });
 }
 
@@ -5806,12 +5851,29 @@ function syncGameState(gameState) {
     return;
   }
   
-  const oldTurn = S?.turn;
-  const oldPhase = S?.phase;
-  S = { ...gameState };
+  console.log('同步游戏状态:', gameState);
   
-  if (oldTurn !== S.turn || oldPhase !== S.phase) {
+  // 深拷贝游戏状态
+  try {
+    S = JSON.parse(JSON.stringify(gameState));
+    
+    // 同步其他全局变量
+    if (gameState.dealerStreak !== undefined) {
+      dealerStreak = gameState.dealerStreak;
+    }
+    
+    // 同步座位名称
+    if (gameState.seatNames) {
+      seatNames = [...gameState.seatNames];
+    }
+    
+    console.log('游戏状态同步完成, 当前回合:', S.turn, ', 莊家:', S.dealer);
+    log(`🔄 遊戲狀態已同步`);
+    
+    // 强制重新渲染
     renderAll();
+  } catch (e) {
+    console.error('syncGameState 错误:', e);
   }
 }
 
