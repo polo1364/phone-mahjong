@@ -2139,7 +2139,7 @@ function startNewHand(isFirstGame = false) {
   S.names = randomNames ? randomNames.slice() : (prevNames ? prevNames.slice() : []);
   dealTiles();
   S.phase = 'play';
-  S.remain = S.wall.length;
+  S.remain = S.wall.length + S.deadWall.length;
   renderAll();
   
   const dealerWind = seatNames?.[S.dealer] || ['東', '南', '西', '北'][S.dealer];
@@ -2794,7 +2794,7 @@ function doConcealedKong(pid, key) {
     pl.hand.push(newTile); // 先加入手牌
     pl.drawnTile = newTile; // 設置為drawnTile，會顯示在最右邊
   }
-  S.remain = S.wall.length;
+  S.remain = S.wall.length + S.deadWall.length;
   renderAll();
   
   const t = pl.drawnTile || pl.hand[pl.hand.length - 1];
@@ -2898,7 +2898,7 @@ function doAddedKong(pid, meldIndex) {
     pl.hand.push(newTile); // 先加入手牌
     pl.drawnTile = newTile; // 設置為drawnTile，會顯示在最右邊
   }
-  S.remain = S.wall.length;
+  S.remain = S.wall.length + S.deadWall.length;
   pl.rinshan = true;
   renderAll();
   
@@ -3030,7 +3030,7 @@ function doKong(pid, tile) {
     pl.hand.push(newTile); // 先加入手牌
     pl.drawnTile = newTile; // 設置為drawnTile，會顯示在最右邊
   }
-  S.remain = S.wall.length;
+  S.remain = S.wall.length + S.deadWall.length;
   S.lastAction = 'kong';
   S.lastActor = pid;
   S.turn = pid;
@@ -5949,10 +5949,20 @@ function syncGameState(gameState, fromPlayerSeat) {
   }
   
   console.log('同步游戏状态:', gameState, ', fromPlayer:', fromPlayerSeat);
+  console.log('同步前 - wall长度:', S?.wall?.length, ', deadWall长度:', S?.deadWall?.length, ', remain:', S?.remain);
+  console.log('同步后 - wall长度:', gameState?.wall?.length, ', deadWall长度:', gameState?.deadWall?.length, ', remain:', gameState?.remain);
   
   // 深拷贝游戏状态
   try {
     S = JSON.parse(JSON.stringify(gameState));
+    
+    // 【重要】在连线模式下，强制使用服务器端的牌墙状态，确保一致性
+    // 这可以防止不同客户端牌墙状态不一致的问题
+    if (isOnlineMode) {
+      // 确保剩余牌数正确计算
+      S.remain = S.wall.length + S.deadWall.length;
+      console.log('使用服务器端牌墙状态 - wall:', S.wall.length, ', deadWall:', S.deadWall.length, ', remain:', S.remain);
+    }
     
     // 【重要】在连线模式下，清除其他玩家的 drawnTile（隐私保护）
     // 只保留当前玩家的 drawnTile（如果有的话）
