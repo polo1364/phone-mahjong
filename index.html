@@ -420,7 +420,7 @@ body {
 .my-hand-area {
   background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,0.95) 100%);
   border-top: 3px solid var(--accent-jade);
-  padding: 14px 10px calc(16px + var(--safe-bottom));
+  padding: 10px 8px calc(12px + var(--safe-bottom));
   box-shadow: 0 -4px 24px var(--shadow-medium);
   position: relative;
   z-index: 10;
@@ -544,8 +544,8 @@ body {
 /* ===== 控制按鈕 ===== */
 .controls-bar {
   display: flex;
-  gap: 6px;
-  padding: 8px;
+  gap: 4px;
+  padding: 6px 4px;
   flex-wrap: wrap;
   justify-content: center;
   -webkit-overflow-scrolling: touch;
@@ -553,12 +553,12 @@ body {
 
 .btn {
   flex: 1;
-  min-width: 60px;
-  max-width: 100px;
-  padding: 12px 8px;
+  min-width: 50px;
+  max-width: 85px;
+  padding: 8px 6px;
   border: none;
-  border-radius: 12px;
-  font-size: 13px;
+  border-radius: 10px;
+  font-size: 11px;
   font-weight: 700;
   font-family: inherit;
   cursor: pointer;
@@ -566,7 +566,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 1px;
   touch-action: manipulation;
   -webkit-tap-highlight-color: rgba(255,255,255,0.1);
   user-select: none;
@@ -637,11 +637,11 @@ body {
 }
 
 .btn-icon {
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .btn-text {
-  font-size: 11px;
+  font-size: 9px;
 }
 
 /* ===== 彈窗 ===== */
@@ -922,13 +922,14 @@ body {
   }
   
   .btn {
-    min-width: 55px;
-    padding: 12px 6px;
-    font-size: 12px;
+    min-width: 48px;
+    max-width: 75px;
+    padding: 8px 4px;
+    font-size: 10px;
   }
   
-  .btn-icon { font-size: 16px; }
-  .btn-text { font-size: 9px; }
+  .btn-icon { font-size: 14px; }
+  .btn-text { font-size: 8px; }
   
   .opponent-card {
     padding: 8px 10px;
@@ -1042,8 +1043,9 @@ body {
   }
   
   .btn {
-    min-width: 64px;
-    padding: 14px 10px;
+    min-width: 50px;
+    max-width: 80px;
+    padding: 8px 6px;
     touch-action: manipulation;
   }
   
@@ -1102,21 +1104,24 @@ body {
   }
   
   .controls-bar {
-    padding: 4px;
-    gap: 4px;
+    padding: 4px 2px;
+    gap: 3px;
   }
   
   .btn {
-    padding: 10px 6px;
-    font-size: 11px;
+    min-width: 45px;
+    max-width: 70px;
+    padding: 6px 4px;
+    font-size: 9px;
+    border-radius: 8px;
   }
   
   .btn-icon {
-    font-size: 16px;
+    font-size: 13px;
   }
   
   .btn-text {
-    font-size: 9px;
+    font-size: 7px;
   }
   
   .tile-md {
@@ -1904,7 +1909,11 @@ async function loadGame() {
     
     // 如果遊戲還在進行中，繼續AI回合
     if (S.phase === 'play' && S.turn !== 0) {
-      setTimeout(stepAI, 1000);
+      // 在连线模式下，只有 AI 玩家才自动出牌
+      const isCurrentPlayerAI = gameMode === 'online' ? (S.turn !== mySeat && S.players[S.turn].isAI) : (S.turn !== 0);
+      if (isCurrentPlayerAI) {
+        setTimeout(stepAI, 1000);
+      }
     }
     
     return true;
@@ -2134,11 +2143,17 @@ function startNewHand(isFirstGame = false) {
     startAutoSave();
   }
   
-  if (S.dealer === 0) {
+  // 在连线模式下，只有 AI 玩家才自动出牌
+  const isDealerAI = gameMode === 'online' ? (S.dealer !== mySeat && S.players[S.dealer].isAI) : (S.dealer !== 0);
+  
+  if (S.dealer === 0 || (gameMode === 'online' && S.dealer === mySeat)) {
     log(`👉 莊家持有17張牌，請直接出牌`);
-  } else {
+  } else if (isDealerAI) {
     log(`⏳ AI莊家開始出牌...`);
     setTimeout(stepAI, 1000 + Math.random() * 1000);
+  } else {
+    // 连线模式下，其他真人玩家等待他们自己出牌
+    log(`⏳ 等待 ${S.names[S.dealer]} 出牌...`);
   }
 }
 
@@ -4321,7 +4336,14 @@ function stepNext() {
       }
     }
   } else {
-    setTimeout(stepAI, 800 + Math.random() * 800);
+    // AI 回合（在连线模式下，只有 AI 玩家才自动出牌）
+    const isCurrentPlayerAI = gameMode === 'online' ? (S.turn !== mySeat && S.players[S.turn].isAI) : (S.turn !== 0);
+    if (isCurrentPlayerAI) {
+      setTimeout(stepAI, 800 + Math.random() * 800);
+    } else {
+      // 连线模式下，其他真人玩家等待他们自己出牌
+      log(`⏳ 等待 ${S.names[S.turn]} 出牌...`);
+    }
   }
 }
 
@@ -5533,12 +5555,17 @@ function initOnline() {
   socket.on('gameStarted', (data) => {
     log('🎮 遊戲開始！');
     // 所有玩家收到 gameStarted 事件时，都应该关闭连线面板并初始化游戏
-    // 立即强制关闭连线面板
-    const onlinePanel = document.getElementById('onlinePanel');
-    if (onlinePanel) {
-      onlinePanel.style.display = 'none';
-      onlinePanel.classList.remove('show');
-    }
+    // 立即强制关闭连线面板（使用多种方法确保关闭）
+    setTimeout(() => {
+      const onlinePanel = document.getElementById('onlinePanel');
+      if (onlinePanel) {
+        onlinePanel.classList.remove('show');
+        onlinePanel.style.setProperty('display', 'none', 'important');
+        onlinePanel.style.display = 'none';
+        // 强制隐藏
+        onlinePanel.setAttribute('style', 'display: none !important;');
+      }
+    }, 0);
     startOnlineGame(data);
   });
   
@@ -5604,7 +5631,11 @@ function joinOnlineRoom() {
   socket.emit('joinRoom', { roomId, playerName }, (response) => {
     if (response.success) {
       isOnlineMode = true;
-      log(`✅ 已加入房間: ${roomId}`);
+      // 设置 mySeat（从服务器返回的玩家信息中获取）
+      if (response.player && typeof response.player.seat !== 'undefined') {
+        mySeat = response.player.seat;
+      }
+      log(`✅ 已加入房間: ${roomId}，座位: ${mySeat}`);
     } else {
       log('❌ ' + (response.error || '加入房間失敗'));
     }
@@ -5662,6 +5693,15 @@ function startOnlineGame(data) {
       log(`🤖 自動補位 ${needAI} 位AI玩家：${aiNames.join('、')}`);
     } else {
       GAME_SETTINGS.playerNames = onlinePlayerNames;
+    }
+  }
+  
+  // 确保在连线模式下，mySeat 已正确设置
+  if (gameMode === 'online' && (mySeat < 0 || mySeat === undefined)) {
+    const player = data.players.find(p => p.id === socket.id);
+    if (player && typeof player.seat !== 'undefined') {
+      mySeat = player.seat;
+      log(`📍 設置座位: ${mySeat}`);
     }
   }
   
