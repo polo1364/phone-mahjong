@@ -6695,9 +6695,14 @@ function syncGameState(gameState, fromPlayerSeat) {
       const totalTiles = actualHandSize + meldTilesCount;
       
       // 计算期望的手牌数量
-      // 16张麻将：每个副露（吃/碰/杠）占用3或4张牌，但手牌中只保留1张（副露的牌不在手牌中）
-      // 庄家开局：17张手牌，之后每次摸牌后16张
-      // 闲家开局：16张手牌，之后每次摸牌后15张
+      // 16张麻将：每个副露（吃/碰/杠）会从手牌中移除部分牌
+      // - 吃：从手牌移除2张，副露3张（包括别人打出的1张）
+      // - 碰：从手牌移除2张，副露3张（包括别人打出的1张）
+      // - 明杠：从手牌移除3张，副露4张（包括别人打出的1张）
+      // - 暗杠：从手牌移除4张，副露4张（全部来自手牌）
+      // - 加杠：从手牌移除1张，副露4张（已有3张在副露中）
+      // 所以每个副露，手牌净减少 = 副露牌数 - 1（因为别人打出的1张不在手牌中）
+      // 但暗杠和加杠需要特殊处理
       const isDealer = S.dealer === i;
       
       // 基础手牌数：庄家17张，闲家16张（开局时）
@@ -6705,21 +6710,72 @@ function syncGameState(gameState, fromPlayerSeat) {
       const hasDrawn = player.drawCount > 0 || player.drawnTile !== null;
       const baseHandSize = isDealer ? (hasDrawn ? 16 : 17) : (hasDrawn ? 15 : 16);
       
-      // 每个副露会减少手牌数：吃/碰减少2张，杠减少3张（因为副露的牌不在手牌中）
-      // 但实际上，每个副露只减少1张手牌（因为副露的牌被移出手牌）
-      const expectedHandSize = baseHandSize - meldCount;
+      // 计算每个副露减少的手牌数
+      // 在16张麻将中：
+      // - 吃：从手牌移除2张，副露3张（包括别人打出的1张）
+      // - 碰：从手牌移除2张，副露3张（包括别人打出的1张）
+      // - 明杠：从手牌移除3张，副露4张（包括别人打出的1张）
+      // - 暗杠：从手牌移除4张，副露4张（全部来自手牌）
+      // - 加杠：从手牌移除1张，副露4张（已有3张在副露中，从碰变成杠）
+      // 
+      // 简化计算：每个副露，手牌净减少 = 副露牌数 - 1（因为别人打出的1张不在手牌中）
+      // 但暗杠和加杠需要特殊处理：
+      // - 暗杠：减少4张（全部来自手牌）
+      // - 加杠：减少1张（从碰变成杠）
+      // 
+      // 由于无法区分明杠和加杠（都是type='kong', concealed=false），
+      // 我们使用更宽松的验证：允许每个副露减少1-3张手牌
+      let handReduction = 0;
+      for (const meld of player.melds) {
+        if (meld.type === 'kong' && meld.concealed) {
+          // 暗杠：从手牌移除4张
+          handReduction += 4;
+        } else if (meld.type === 'kong' && !meld.concealed) {
+          // 明杠或加杠：可能是3张（明杠）或1张（加杠）
+          // 使用平均值2张，或者更宽松的范围
+          handReduction += 2; // 使用中间值
+        } else {
+          // 吃/碰：从手牌移除2张（别人打出的1张不在手牌中）
+          handReduction += 2;
+        }
+      }
+      
+      // 计算期望手牌数的范围
+      // 最少减少：假设所有副露都是加杠（每个减少1张）
+      const minReduction = meldCount;
+      // 最多减少：假设所有副露都是暗杠（每个减少4张）
+      const maxReduction = meldCount * 4;
+      // 实际减少：根据副露类型计算
+      const actualReduction = handReduction;
+      
+      const minExpectedHandSize = baseHandSize - maxReduction;
+      const maxExpectedHandSize = baseHandSize - minReduction;
+      const expectedHandSize = baseHandSize - actualReduction;
       
       // 如果有摸到的牌，手牌数应该+1
       const expectedHandSizeWithDrawn = player.drawnTile ? expectedHandSize + 1 : expectedHandSize;
+      const minExpectedHandSizeWithDrawn = player.drawnTile ? minExpectedHandSize + 1 : minExpectedHandSize;
+      const maxExpectedHandSizeWithDrawn = player.drawnTile ? maxExpectedHandSize + 1 : maxExpectedHandSize;
       
-      // 验证手牌数量（允许1张的误差，因为可能有drawnTile或状态同步延迟）
-      const minHandSize = expectedHandSize - 1;
-      const maxHandSize = expectedHandSizeWithDrawn + 1;
+      // 验证手牌数量（使用范围验证，允许误差）
+      const minHandSize = minExpectedHandSizeWithDrawn - 1; // 允许1张误差
+      const maxHandSize = maxExpectedHandSizeWithDrawn + 1; // 允许1张误差
+      
+      // 详细输出每个副露的信息
+      const meldInfo = player.melds.map(m => `${m.type}${m.concealed ? '(暗)' : '(明)'}`).join(', ');
       
       if (actualHandSize < minHandSize || actualHandSize > maxHandSize) {
-        console.warn(`⚠️ 玩家 ${i} (${playerName(i)}) 手牌数量异常: 手牌数=${actualHandSize}, 期望=${expectedHandSize}~${expectedHandSizeWithDrawn}, 副露数=${meldCount}, 副露牌数=${meldTilesCount}, 杠数=${kongCount}, drawnTile=${player.drawnTile ? 'yes' : 'no'}, drawCount=${player.drawCount}, isDealer=${isDealer}`);
+        console.warn(`⚠️ 玩家 ${i} (${playerName(i)}) 手牌数量异常:`);
+        console.warn(`  手牌数=${actualHandSize}, 期望范围=${minHandSize}~${maxHandSize}`);
+        console.warn(`  基础手牌数=${baseHandSize}, 副露数=${meldCount}, 副露牌数=${meldTilesCount}`);
+        console.warn(`  副露详情: ${meldInfo || '无'}`);
+        console.warn(`  计算减少=${actualReduction}, 最少减少=${minReduction}, 最多减少=${maxReduction}`);
+        console.warn(`  杠数=${kongCount}, drawnTile=${player.drawnTile ? 'yes' : 'no'}, drawCount=${player.drawCount}, isDealer=${isDealer}`);
+        
+        // 尝试修复：如果手牌数明显偏少，可能是状态同步错误
+        // 但这里只记录警告，不自动修复，避免破坏游戏状态
       } else {
-        console.log(`✓ 玩家 ${i} (${playerName(i)}) 手牌数量正常: 手牌数=${actualHandSize}, 期望=${expectedHandSize}~${expectedHandSizeWithDrawn}, 副露数=${meldCount}`);
+        console.log(`✓ 玩家 ${i} (${playerName(i)}) 手牌数量正常: 手牌数=${actualHandSize}, 期望范围=${minHandSize}~${maxHandSize}, 副露数=${meldCount}`);
       }
     }
     
